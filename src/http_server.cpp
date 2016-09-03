@@ -59,7 +59,7 @@ void HttpServer::Init()
     struct sockaddr_in sin_addr;
     sin_addr.sin_family = AF_INET;
     sin_addr.sin_port = htons(port);
-    sin_addr.sin_addr.s_addr = inet_addr(addr);
+    inet_pton(AF_INET, addr, &sin_addr.sin_addr.s_addr);
 
     if (bind(listen_fd, (struct sockaddr *)&sin_addr, sizeof(sin_addr) )) {
         LOG_E("Could not bind to %s:%d: %s", addr, port, strerror(errno));
@@ -135,8 +135,8 @@ bool HttpServer::SendResponse(Client &client)
 void HttpServer::Serve()
 {
     fd_set readfds, writefds;
-    FD_COPY(&so.writefds, &writefds);
-    FD_COPY(&so.readfds, &readfds);
+    writefds = so.writefds;
+    readfds = so.readfds;
 
     while(select(so.nfds, &readfds, &writefds, NULL, NULL) > 0) {
         if (FD_ISSET(listen_fd, &readfds)) AcceptNewConnection();
@@ -147,8 +147,8 @@ void HttpServer::Serve()
             if (FD_ISSET(clients[i].fd, &writefds)) SendResponse(clients[i]);
         }
 
-        FD_COPY(&so.writefds, &writefds);
-        FD_COPY(&so.readfds, &readfds);
+        writefds = so.writefds;
+        readfds = so.readfds;
     }
     perror("select");
 }
@@ -197,7 +197,6 @@ void HttpServer::AcceptNewConnection()
     int fd = accept(listen_fd, (struct sockaddr *)&client_addr, &client_len);
 
     if (fd == -1) {
-        LOG_E("%d", errno);
         LOG_E("Could not accept a new connection: %s", strerror(errno));
         return;
     }
@@ -233,7 +232,6 @@ void HttpServer::ListenAndServe()
     if (is_slave) {
         Serve();
     } else {
-        shutdown(listen_fd, SHUT_RDWR);
         close(listen_fd);
         Wait();
     }
