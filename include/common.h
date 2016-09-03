@@ -10,6 +10,7 @@ struct Config
     int port;
     char* addr;
     int n_workers;
+    int max_log_level;
 
     Config();
     ~Config();

@@ -281,8 +281,6 @@ void HttpServer::DeleteClient(int fd)
 
     clients[i].~HttpClient();
     clients[i] = HttpClient();
-    // clients[i].request = HttpRequest();
-    // clients[i].response = HttpResponse();
 
     memmove(clients + i, clients + i + 1, sizeof(HttpClient) * (n_clients - i - 1));
 

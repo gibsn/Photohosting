@@ -12,7 +12,8 @@
 Config::Config()
     : port(0),
     addr(0),
-    n_workers(0)
+    n_workers(0),
+    max_log_level(-1)
 {}
 
 
@@ -25,24 +26,31 @@ Config::~Config()
 void Config::Check()
 {
     if (!port) {
-        LOG_W(
+        fprintf(stderr,
             "You have not specified any port, "
-            "listening on 80 by default");
+            "listening on 80 by default\n");
         port = 80;
     }
 
     if (!addr) {
-        LOG_W(
+        fprintf(stderr,
             "You have not specified any ip, "
-            "listening on 0.0.0.0 by default");
+            "listening on 0.0.0.0 by default\n");
         addr = strdup("0.0.0.0");
     }
 
     if (!n_workers) {
-        LOG_W(
+        fprintf(stderr,
             "You have not specified amount of workers, "
-            "using 1 by default");
+            "using 1 by default\n");
         n_workers = 1;
+    }
+
+    if (max_log_level == -1) {
+        fprintf (stderr,
+            "You have not specified level of logging, "
+            "using INFO by default\n");
+        max_log_level = LOG_INFO;
     }
 }
 
@@ -55,6 +63,7 @@ void print_help()
         "  -i [a.b.c.d]: address to listen on\n"
         "  -p [int]: port to listen on\n"
         "  -n [int]: amount of workers\n"
+        "  -l [0-7]: level of logging\n"
     );
 }
 
@@ -68,26 +77,36 @@ bool process_cmd_arguments(int argc, char **argv, Config &cfg)
 
     int c;
 
-    while ((c = getopt(argc, argv, "hi:p:n:")) != -1) {
+    //fix strtol bug
+    while ((c = getopt(argc, argv, "hi:p:n:l:")) != -1) {
         switch(c) {
         case 'i':
             cfg.addr = strdup(optarg);
             if (!inet_aton(cfg.addr, 0)) {
-                LOG_E("Invalid IP (%s), must be A.B.C.D", optarg);
+                fprintf(stderr, "Invalid IP (%s), must be A.B.C.D", optarg);
                 return false;
             }
             break;
         case 'p':
             cfg.port = strtol(optarg, (char **)NULL, 10);
             if (!cfg.port) {
-                LOG_E("Wrong port value (%s), must be int", optarg);
+                fprintf(stderr, "Wrong port value (%s), must be int\n", optarg);
                 return false;
             }
             break;
         case 'n':
             cfg.n_workers = strtol(optarg, (char **)NULL, 10);
             if (!cfg.n_workers) {
-                LOG_E("Wrong workers value (%s), must be int", optarg);
+                fprintf(stderr, "Wrong workers value (%s), must be int\n",
+                    optarg);
+                return false;
+            }
+            break;
+        case 'l':
+            cfg.max_log_level = strtol(optarg, (char**)NULL, 10);
+            if (!cfg.max_log_level ) {
+                fprintf(stderr, "Wrong log level (%s), must be [0-7]\n",
+                    optarg);
                 return false;
             }
             break;

@@ -9,6 +9,7 @@
 
 
 extern pid_t my_pid;
+extern int max_log_level;
 
 //todo: fix logging, merges when multiple processes are launched
 
@@ -32,6 +33,8 @@ extern pid_t my_pid;
 
 
 #define LOG_ANY(level, level_str, str, ...) do {                   \
+    if (level > max_log_level) break;                              \
+                                                                   \
     if (level == LOG_ERR) {                                        \
         fprintf(stdout, LOG_COLOUR_RED);                           \
     } else if (level == LOG_WARNING) {                             \
@@ -54,7 +57,7 @@ extern pid_t my_pid;
         tm->tm_sec                                                 \
     );                                                             \
                                                                    \
-    fprintf(stdout, "[%d]", my_pid);\
+    fprintf(stdout, "[%d]", my_pid);                               \
     fprintf(stdout, "[" level_str "] " LOG_COLOUR_NORMAL str "\n", \
         ##__VA_ARGS__);                                            \
 } while(0);

@@ -6,19 +6,21 @@
 #include "log.h"
 
 /*TODO:
-**  Client -> HttpClient
-**  Split into modules
 **  Inheritance for http_responses
 */
 
 int main(int argc, char **argv)
 {
     Config cfg;
-    my_pid = getpid();
 
     if (!process_cmd_arguments(argc, argv, cfg)) return -1;
     cfg.Check();
     LOG_I("Initialised config");
+
+    //global variables from log.h
+    my_pid = getpid();
+    max_log_level = cfg.max_log_level;
+    LOG_I("Initialised logging");
 
     LOG_I("Starting server");
     HttpServer server;

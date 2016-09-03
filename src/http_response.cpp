@@ -86,6 +86,7 @@ char *HttpResponse::GenerateResponse(int &len)
         s_header = HeaderToStr(header->header);
         s_header_len = strlen(s_header);
 
+        LOG_E("%s", s_header);
         response = (char *)realloc(response, len + s_header_len);
         memcpy(response + len, s_header, s_header_len);
 
