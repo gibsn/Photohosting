@@ -180,7 +180,7 @@ void HttpSession::ProcessPostRequest()
 
 ByteArray *HttpSession::GetFileFromRequest(const char *req_path) const
 {
-    const char *boundary = request->GetMultipartBondary();
+    char *boundary = request->GetMultipartBondary();
     if (!boundary) return NULL;
 
     MultipartParser parser(boundary);
@@ -189,6 +189,7 @@ ByteArray *HttpSession::GetFileFromRequest(const char *req_path) const
     ByteArray *body = parser.GetBody();
 
     // hexdump((uint8_t*)body->data, body->size);
+    free(boundary);
 
     return NULL;
 }
@@ -205,9 +206,11 @@ void HttpSession::Respond(http_status_t code)
 
 request_parser_result_t HttpSession::ParseHttpRequest(ByteArray *req)
 {
-    request = new HttpRequest;
+    request_parser_result_t ret = ok;
+    int body_bytes_pending;
 
-    //TODO: I dont need to parse same headers every time
+    request = new HttpRequest();
+
     int res = phr_parse_request(req->data,
                                 req->size,
                                 (const char**)&request->method,
@@ -221,25 +224,34 @@ request_parser_result_t HttpSession::ParseHttpRequest(ByteArray *req)
 
     if (res == -1) {
         LOG_W("Got an incomplete HTTP-Request")
-        return incomplete_request;
+        ret = incomplete_request;
+        goto fin;
     } else if (res == -2) {
         LOG_E("Failed to parse HTTP-Request");
-        return invalid_request;
+        ret = invalid_request;
+        goto fin;
     }
 
     request->headers_len = res;
     ProcessHeaders();
 
-    int body_bytes_pending = request->body_len - (req->size - res);
+    body_bytes_pending = request->body_len - (req->size - res);
     if (body_bytes_pending) {
         LOG_D("Missing %d body bytes, waiting", body_bytes_pending);
-        return incomplete_request;
+        ret = incomplete_request;
+        goto fin;
     }
 
     request->body = (char *)malloc(request->body_len);
     memcpy(request->body, req->data + request->headers_len, request->body_len);
 
-    return ok;
+fin:
+    if (ret != ok) {
+        delete request;
+        request = NULL;
+    }
+
+    return ret;
 }
 
 

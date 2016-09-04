@@ -12,9 +12,10 @@ int MultipartParser::ReadHeaderValue(multipart_parser *p, const char *at, size_t
 
     char *value = strndup(at, length);
     char *end;
-    char *start = strstr(value, "filename=") + sizeof "filename=";
+    char *start = strstr(value, "filename=");
     if (!start) goto fin;
 
+    start += sizeof "filename=";
     end = strchr(start, ';');
 
     if (end) {

@@ -35,8 +35,10 @@ char *HttpRequest::GetMultipartBondary() const
             char *end;
 
             char *value = strndup(headers[i].value, headers[i].value_len);
-            char *start = strstr(value, "boundary=") + sizeof "boundary=" - 1;
+            char *start = strstr(value, "boundary=");
             if (!start) goto fin;
+
+            start += sizeof "boundary=" - 1;
 
             end = strchr(start, ';');
 
