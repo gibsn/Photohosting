@@ -1,15 +1,15 @@
 #include <stdio.h>
 
+#include "common.h"
 #include "log.h"
 
 
 int main(int argc, char **argv)
 {
-    // ProcessArguments(argc, argv);
-    LOG_W("Hello");
-    LOG_E("HELLO");
-    LOG_I("hello");
+    Config cfg;
 
+    if (!process_cmd_arguments(argc, argv, cfg)) return -1;
+    cfg.Check();
 
     return 0;
 }

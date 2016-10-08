@@ -1,5 +1,5 @@
-#ifndef COMMON_H_SENTRY
-#define COMMON_H_SENTRY
+#ifndef LOG_H_SENTRY
+#define LOG_H_SENTRY
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,28 +24,29 @@
 #define LOG_I(str, ...) LOG_ANY(LOG_NOTICE, "INFO", str, ##__VA_ARGS__)
 
 
-#define LOG_ANY(level, level_str, str, ...) do {                     \
-    if (level == LOG_ERR) {                                          \
-        fprintf(stderr, LOG_COLOUR_RED, ##__VA_ARGS__);              \
-    } else if (level == LOG_WARNING) {                               \
-        fprintf(stderr, LOG_COLOUR_YELLOW, ##__VA_ARGS__);           \
-    } else if (level == LOG_NOTICE) {                                \
-        fprintf(stderr, LOG_COLOUR_GREEN, ##__VA_ARGS__);            \
-    }                                                                \
-                                                                     \
-    time_t t = time(NULL);                                           \
-    struct tm *tm = localtime(&t);                                   \
-    if (!tm) break;                                                  \
-    fprintf(stderr, "%02d.%02d.%04d %02d:%02d:%02d ",                \
-        tm->tm_mday,                                                 \
-        tm->tm_mon + 1,                                              \
-        tm->tm_year + 1900,                                          \
-        tm->tm_hour,                                                 \
-        tm->tm_min,                                                  \
-        tm->tm_sec                                                   \
-    );                                                               \
-                                                                     \
-    fprintf(stderr, "[" level_str "] " LOG_COLOUR_NORMAL str "\n");  \
+#define LOG_ANY(level, level_str, str, ...) do {                   \
+    if (level == LOG_ERR) {                                        \
+        fprintf(stderr, LOG_COLOUR_RED);                           \
+    } else if (level == LOG_WARNING) {                             \
+        fprintf(stderr, LOG_COLOUR_YELLOW);                        \
+    } else if (level == LOG_NOTICE) {                              \
+        fprintf(stderr, LOG_COLOUR_GREEN);                         \
+    }                                                              \
+                                                                   \
+    time_t t = time(NULL);                                         \
+    struct tm *tm = localtime(&t);                                 \
+    if (!tm) break;                                                \
+    fprintf(stderr, "%02d.%02d.%04d %02d:%02d:%02d ",              \
+        tm->tm_mday,                                               \
+        tm->tm_mon + 1,                                            \
+        tm->tm_year + 1900,                                        \
+        tm->tm_hour,                                               \
+        tm->tm_min,                                                \
+        tm->tm_sec                                                 \
+    );                                                             \
+                                                                   \
+    fprintf(stderr, "[" level_str "] " LOG_COLOUR_NORMAL str "\n", \
+        ##__VA_ARGS__);                                            \
 } while(0);
 
 #endif
