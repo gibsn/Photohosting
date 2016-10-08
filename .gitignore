@@ -1,0 +1,7 @@
+bridge.touch
+bridge/include
+bridge/lib
+*.a
+*.o
+
+externals/WebAlbumCreator

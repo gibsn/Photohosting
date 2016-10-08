@@ -1,0 +1,3 @@
+[submodule "externals/WebAlbumCreator"]
+	path = externals/WebAlbumCreator
+	url = git@github.com:gibsn/WebAlbumCreator.git
