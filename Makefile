@@ -16,18 +16,16 @@ DEPS_MODULES = $(addprefix $(DEPS_DIR)/, $(notdir $(SRC_MODULES:.cpp=.d)))
 
 BRIDGE_TARGETS = picohttpparser WebAlbumCreator
 
-CXXFLAGS += -I $(INCLUDE_DIR)
-CXXFLAGS += -I $(BRIDGE_DIR)/include
+CXXFLAGS += -I$(INCLUDE_DIR)
+CXXFLAGS += -I$(BRIDGE_DIR)/include
 
 LDFLAGS = -L $(BRIDGE_DIR)/lib/
-LDFLAGS += -l wac
+LDFLAGS += -l wac -l pico
 
 src_to_obj = $(addprefix $(OBJ_DIR)/, $(notdir $(1:.cpp=.o)))
 
-all:
-
 server: $(OBJ_MODULES)
-	$(CXX) $(CXXFLAGS) -o $(OBJ_MODULES) $@ $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) $(OBJ_MODULES) -o $@ $(LDFLAGS)
 
 ifneq ($(MAKECMDGOALS), clean)
 -include bridge.touch
@@ -46,7 +44,7 @@ bridge.touch:
 	mkdir -p $(BRIDGE_DIR)/lib
 	mkdir -p $(BRIDGE_DIR)/bin
 	make -C $(BRIDGE_DIR) -f Makefile $(BRIDGE_TARGETS)
-	echo "-include $(DEPS_MODULES)" > $@
+	@echo "-include $(DEPS_MODULES)" > $@
 
 clean:
 	rm -rf $(OBJ_DIR)
@@ -58,6 +56,8 @@ clean:
 	make -C $(dir $(BRIDGE_DIR)/Makefile) -f Makefile clean
 
 clangcomp:
-	@echo $(CXXFLAGS) | sed -e 's/ -/\n-/g' | grep -v 'Werror' > .clang_complete
+	@echo $(CXXFLAGS) | tr ' ' '\n' | grep -v 'Werror' > .clang_complete
 
-.PHONY: clangcomp all clean
+.PHONY: clangcomp clean
+
+

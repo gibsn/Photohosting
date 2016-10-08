@@ -1,7 +1,11 @@
 bridge.touch
 bridge/include
 bridge/lib
+deps
 *.a
 *.o
+.clang_complete
+.ycm_extra_conf.pyc
+server
 
 externals/WebAlbumCreator

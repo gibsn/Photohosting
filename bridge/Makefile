@@ -10,13 +10,13 @@ PICOHTTPPARSER_STATIC = libpico.a
 
 
 WebAlbumCreator:
-	echo "Compiling WebAlbumCreator"
+	@echo "Compiling WebAlbumCreator"
 	make -C $(WEBALBUMCREATOR_DIR) -f Makefile static
 	cp $(WEBALBUMCREATOR_DIR)/$(WEBALBUMCREATOR_STATIC) $(LIBRARY_DIR)
 	cp $(WEBALBUMCREATOR_DIR)/include/WebAlbumCreator.h $(INCLUDE_DIR)
 
 picohttpparser:
-	echo "Compiling picohttpparser"
+	@echo "Compiling picohttpparser"
 	make -C $(PICOHTTPPARSER_DIR) -f Makefile static
 	cp $(PICOHTTPPARSER_DIR)/$(PICOHTTPPARSER_STATIC) $(LIBRARY_DIR)
 	cp $(PICOHTTPPARSER_DIR)/picohttpparser.h $(INCLUDE_DIR)
