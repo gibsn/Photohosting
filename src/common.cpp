@@ -68,7 +68,7 @@ bool process_cmd_arguments(int argc, char **argv, Config &cfg)
 
     int c;
 
-    while ((c = getopt(argc, argv, "hi:p:n")) != -1) {
+    while ((c = getopt(argc, argv, "hi:p:n:")) != -1) {
         switch(c) {
         case 'i':
             cfg.addr = strdup(optarg);
@@ -78,14 +78,14 @@ bool process_cmd_arguments(int argc, char **argv, Config &cfg)
             }
             break;
         case 'p':
-            cfg.port = strtol(optarg, NULL, 10);
+            cfg.port = strtol(optarg, (char **)NULL, 10);
             if (!cfg.port) {
                 LOG_E("Wrong port value (%s), must be int", optarg);
                 return false;
             }
             break;
         case 'n':
-            cfg.n_workers = strtol(optarg, NULL, 10);
+            cfg.n_workers = strtol(optarg, (char **)NULL, 10);
             if (!cfg.n_workers) {
                 LOG_E("Wrong workers value (%s), must be int", optarg);
                 return false;
