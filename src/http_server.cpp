@@ -104,7 +104,7 @@ void HttpServer::Listen()
 
 bool HttpServer::ProcessRequest(Client &client)
 {
-    LOG_D("Got data from %s", client.s_addr);
+    LOG_D("Got data from %s (%d)", client.s_addr, client.fd);
 
     //to be deleted
     char buf[1024];
@@ -114,7 +114,7 @@ bool HttpServer::ProcessRequest(Client &client)
         return false;
     }
 
-    LOG_D("Processing request from %s", client.s_addr);
+    LOG_D("Processing request from %s (%d)", client.s_addr, client.fd);
 
     //if ready to write
     FD_SET(client.fd, &so.writefds);
@@ -125,7 +125,7 @@ bool HttpServer::ProcessRequest(Client &client)
 
 bool HttpServer::SendResponse(Client &client)
 {
-    LOG_D("Sending response to %s", client.s_addr);
+    LOG_D("Sending response to %s (%d)", client.s_addr, client.fd);
     write(client.fd, "Hello\n", 6);
     FD_CLR(client.fd, &so.writefds);
     return true;
@@ -141,7 +141,6 @@ void HttpServer::Serve()
     while(select(so.nfds, &readfds, &writefds, NULL, NULL) > 0) {
         if (FD_ISSET(listen_fd, &readfds)) AcceptNewConnection();
 
-        //gotta process disconnected clients
         for (int i = 0; i < n_clients; ++i) {
             if (FD_ISSET(clients[i].fd, &readfds)) ProcessRequest(clients[i]);
             if (FD_ISSET(clients[i].fd, &writefds)) SendResponse(clients[i]);
@@ -178,10 +177,10 @@ void HttpServer::DeleteClient(int fd)
         if (clients[i].fd == fd) break;
     }
 
-    LOG_I("Closing connection for %s", clients[i].s_addr);
+    LOG_I("Closing connection for %s (%d)", clients[i].s_addr, clients[i].fd);
 
     clients[i].~Client();
-    memmove(clients + i, clients + i + 1, n_clients - i - 1);
+    memmove(clients + i, clients + i + 1, sizeof(Client) * (n_clients - i - 1));
 
     FD_CLR(fd, &so.readfds);
     FD_CLR(fd, &so.writefds);
@@ -264,10 +263,7 @@ Client::~Client()
 
     if (read_buf) free(read_buf);
     if (write_buf) free(write_buf);
-
     if (s_addr) free(s_addr);
+
 }
-
-
-
 

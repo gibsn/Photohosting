@@ -36,6 +36,8 @@ struct Client
 
     Client();
     ~Client();
+
+    void Free();
 };
 
 
