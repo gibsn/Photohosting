@@ -4,7 +4,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <syslog.h>
+#include <sys/types.h>
 #include <time.h>
+
+
+extern pid_t my_pid;
 
 
 #define     LOG_ESCAPE(x)          "\033[01;" #x "m"
@@ -22,6 +26,7 @@
 #define LOG_E(str, ...) LOG_ANY(LOG_ERR, "ERROR", str, ##__VA_ARGS__)
 #define LOG_W(str, ...) LOG_ANY(LOG_WARNING, "WARNING", str, ##__VA_ARGS__)
 #define LOG_I(str, ...) LOG_ANY(LOG_NOTICE, "INFO", str, ##__VA_ARGS__)
+#define LOG_D(str, ...) LOG_ANY(LOG_DEBUG, "DEBUG", str, ##__VA_ARGS__)
 
 
 #define LOG_ANY(level, level_str, str, ...) do {                   \
@@ -31,6 +36,8 @@
         fprintf(stderr, LOG_COLOUR_YELLOW);                        \
     } else if (level == LOG_NOTICE) {                              \
         fprintf(stderr, LOG_COLOUR_GREEN);                         \
+    } else if (level == LOG_DEBUG) {                               \
+        fprintf(stderr, LOG_COLOUR_WHITE);                         \
     }                                                              \
                                                                    \
     time_t t = time(NULL);                                         \
@@ -45,6 +52,7 @@
         tm->tm_sec                                                 \
     );                                                             \
                                                                    \
+    fprintf(stderr, "[%d]", my_pid);\
     fprintf(stderr, "[" level_str "] " LOG_COLOUR_NORMAL str "\n", \
         ##__VA_ARGS__);                                            \
 } while(0);
