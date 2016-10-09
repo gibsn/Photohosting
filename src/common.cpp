@@ -1,9 +1,9 @@
 #include "common.h"
 
 #include <arpa/inet.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 #include <unistd.h>
 
 #include "log.h"
@@ -104,4 +104,33 @@ bool process_cmd_arguments(int argc, char **argv, Config &cfg)
     }
 
     return true;
+}
+
+
+void hexdump(uint8_t *buf, size_t len) {
+    const int s = 16;
+
+    for (size_t i = 0; i < len; i+=s) {
+        fprintf(stderr, "%s", LOG_COLOUR_PURPLE);
+        for (size_t j = i; j < (i + s); j++) {
+            if (j < len) {
+                fprintf(stderr, "%02x ", buf[j]);
+            } else {
+                fprintf(stderr, " ");
+            }
+
+            if (j == i+(s/2)-1) fprintf(stderr, "  ");
+        }
+
+        fprintf(stderr, " | ");
+
+        for (size_t j = i; j < len && j < (i+s); j++) {
+            fprintf(stderr, "%c", isprint(buf[j]) ? buf[j] : '.');
+            if (j == i+(s/2)-1) fprintf(stderr, "  ");
+        }
+
+        fprintf(stderr, "\n");
+    }
+
+    fprintf(stderr, "%s", LOG_COLOUR_NORMAL);
 }

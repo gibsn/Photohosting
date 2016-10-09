@@ -1,6 +1,9 @@
 #ifndef COMMON_H_SENTRY
 #define COMMON_H_SENTRY
 
+#include <stdint.h>
+#include <stdlib.h>
+
 
 struct Config
 {
@@ -16,6 +19,7 @@ struct Config
 
 
 bool process_cmd_arguments(int, char **, Config &);
+void hexdump(uint8_t *, size_t);
 
 
 

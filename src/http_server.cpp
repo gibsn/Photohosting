@@ -109,12 +109,10 @@ bool HttpServer::ProcessRequest(Client &client)
     //to be deleted
     char buf[1024];
     int buf_len = read(client.fd, buf, sizeof(buf));
-    if (buf_len == -1) {
+    if (buf_len == 0) {
         DeleteClient(client.fd);
         return false;
     }
-
-    // LOG_E("%*.s", buf_len, buf);
 
     LOG_D("Processing request from %s", client.s_addr);
 
@@ -182,6 +180,7 @@ void HttpServer::DeleteClient(int fd)
 
     LOG_I("Closing connection for %s", clients[i].s_addr);
 
+    clients[i].~Client();
     memmove(clients + i, clients + i + 1, n_clients - i - 1);
 
     FD_CLR(fd, &so.readfds);
