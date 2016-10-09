@@ -10,6 +10,8 @@
 
 extern pid_t my_pid;
 
+//todo: fix logging, merges when multiple processes are launched
+
 
 #define     LOG_ESCAPE(x)          "\033[01;" #x "m"
 #define     LOG_COLOUR_GRAY        LOG_ESCAPE(30)
@@ -31,19 +33,19 @@ extern pid_t my_pid;
 
 #define LOG_ANY(level, level_str, str, ...) do {                   \
     if (level == LOG_ERR) {                                        \
-        fprintf(stderr, LOG_COLOUR_RED);                           \
+        fprintf(stdout, LOG_COLOUR_RED);                           \
     } else if (level == LOG_WARNING) {                             \
-        fprintf(stderr, LOG_COLOUR_YELLOW);                        \
+        fprintf(stdout, LOG_COLOUR_YELLOW);                        \
     } else if (level == LOG_NOTICE) {                              \
-        fprintf(stderr, LOG_COLOUR_GREEN);                         \
+        fprintf(stdout, LOG_COLOUR_GREEN);                         \
     } else if (level == LOG_DEBUG) {                               \
-        fprintf(stderr, LOG_COLOUR_WHITE);                         \
+        fprintf(stdout, LOG_COLOUR_WHITE);                         \
     }                                                              \
                                                                    \
     time_t t = time(NULL);                                         \
     struct tm *tm = localtime(&t);                                 \
     if (!tm) break;                                                \
-    fprintf(stderr, "%02d.%02d.%04d %02d:%02d:%02d ",              \
+    fprintf(stdout, "%02d.%02d.%04d %02d:%02d:%02d ",              \
         tm->tm_mday,                                               \
         tm->tm_mon + 1,                                            \
         tm->tm_year + 1900,                                        \
@@ -52,8 +54,8 @@ extern pid_t my_pid;
         tm->tm_sec                                                 \
     );                                                             \
                                                                    \
-    fprintf(stderr, "[%d]", my_pid);\
-    fprintf(stderr, "[" level_str "] " LOG_COLOUR_NORMAL str "\n", \
+    fprintf(stdout, "[%d]", my_pid);\
+    fprintf(stdout, "[" level_str "] " LOG_COLOUR_NORMAL str "\n", \
         ##__VA_ARGS__);                                            \
 } while(0);
 
