@@ -1,4 +1,4 @@
-CXX = g++
+CXX = clang++
 CXXFLAGS = -g -Wall
 CXXFLAGS += -Wno-unused-variable -Wno-unused-value -std=c++98 -fpermissive
 #Needed for proper libarchive work

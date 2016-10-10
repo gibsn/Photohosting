@@ -3,14 +3,18 @@
 
 #include <sys/types.h>
 
+#include "picohttpparser.h"
+
+#include "http_client.h"
+
+
 #define MAX_CLIENTS 1024
 
 
 struct Config;
 
 
-struct SelectOpts
-{
+struct SelectOpts {
     int nfds;
     fd_set readfds;
     fd_set writefds;
@@ -19,30 +23,12 @@ struct SelectOpts
 };
 
 
-struct Worker
-{
+struct Worker {
     pid_t pid;
 };
 
 
-struct Client
-{
-    int fd;
-
-    char *read_buf;
-    char *write_buf;
-
-    char *s_addr;
-
-    Client();
-    ~Client();
-
-    void Free();
-};
-
-
-class HttpServer
-{
+class HttpServer {
     char *addr;
     int port;
 
@@ -55,7 +41,7 @@ class HttpServer
     SelectOpts so;
 
     int n_clients;
-    Client *clients;
+    HttpClient *clients;
 
     void Listen();
     void Serve();
@@ -65,8 +51,13 @@ class HttpServer
     void AddNewClient(int, char *);
     void DeleteClient(int);
 
-    bool ProcessRequest(Client &);
-    bool SendResponse(Client &);
+    bool ParseHttpRequest(HttpClient &);
+    void ProcessHeaders(HttpClient &);
+
+    void ProcessRequest(HttpClient &);
+    void SendResponse(HttpClient &);
+
+    void RespondOk(HttpClient &);
 
 public:
     HttpServer();
@@ -77,8 +68,6 @@ public:
 
     void ListenAndServe();
 };
-
-
 
 
 

@@ -5,6 +5,11 @@
 #include "http_server.h"
 #include "log.h"
 
+/*TODO:
+**  Client -> HttpClient
+**  Split into modules
+**  Inheritance for http_responses
+*/
 
 int main(int argc, char **argv)
 {

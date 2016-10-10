@@ -1,6 +1,7 @@
 #include "http_server.h"
 
 #include <arpa/inet.h>
+#include <ctype.h>
 #include <errno.h>
 #include <netinet/in.h>
 #include <stdio.h>
@@ -9,9 +10,12 @@
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "common.h"
+#include "http_request.h"
+#include "http_response.h"
 #include "log.h"
 
 
@@ -67,7 +71,7 @@ void HttpServer::Init()
     }
 
     workers = new Worker[n_workers];
-    clients = new Client[MAX_CLIENTS];
+    clients = new HttpClient[MAX_CLIENTS];
 }
 
 
@@ -102,33 +106,103 @@ void HttpServer::Listen()
 }
 
 
-bool HttpServer::ProcessRequest(Client &client)
-{
-    LOG_D("Got data from %s (%d)", client.s_addr, client.fd);
 
-    //to be deleted
-    char buf[1024];
-    int buf_len = read(client.fd, buf, sizeof(buf));
-    if (buf_len == 0) {
-        DeleteClient(client.fd);
-        return false;
-    }
+void HttpServer::RespondOk(HttpClient &client)
+{
+    client.response.code = http_ok;
+    client.response.minor_version = client.request.minor_version;
+
+    client.response.AddDateHeader();
+    client.response.AddHeader(
+        "Connection", client.request.keep_alive? "keep-alive" : "close");
+
+    client.response.body_len = 0;
+    client.response.body = NULL;
+
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%d", client.response.body_len);
+    client.response.AddHeader("Content-Length", buf);
+
+    SendResponse(client);
+}
+
+
+void HttpServer::ProcessRequest(HttpClient &client)
+{
+    // hexdump((uint8_t *)client.read_buf, client.read_buf_len);
+    if (!ParseHttpRequest(client)) return;
 
     LOG_D("Processing request from %s (%d)", client.s_addr, client.fd);
 
-    //if ready to write
-    FD_SET(client.fd, &so.writefds);
+    RespondOk(client);
+}
+
+
+bool HttpServer::ParseHttpRequest(HttpClient &client)
+{
+    int res = phr_parse_request(client.read_buf,
+                                client.read_buf_len,
+                                (const char**)&client.request.method,
+                                &client.request.method_len,
+                                (const char **)&client.request.path,
+                                &client.request.path_len,
+                                &client.request.minor_version,
+                                client.request.headers,
+                                &client.request.n_headers,
+                                0);
+
+    if (res == -1) {
+        LOG_E("Failed to parse HTTP-Request from %s (%d)",
+            client.s_addr, client.fd);
+        client.TruncateReadBuf();
+
+        return false;
+    } else if (res == -2) {
+        LOG_W("Got an incomplete HTTP-Request from %s (%d), "
+            "waiting for the rest", client.s_addr, client.fd);
+
+        return false;
+    }
+
+    client.request.body = client.read_buf + res;
+    ProcessHeaders(client);
 
     return true;
 }
 
 
-bool HttpServer::SendResponse(Client &client)
+void HttpServer::ProcessHeaders(HttpClient &client)
 {
-    LOG_D("Sending response to %s (%d)", client.s_addr, client.fd);
-    write(client.fd, "Hello\n", 6);
-    FD_CLR(client.fd, &so.writefds);
-    return true;
+#define CMP_HEADER(str) !memcmp(headers[i].name, str, headers[i].name_len)
+
+    struct phr_header *headers = client.request.headers;
+    for (int i = 0; i < client.request.n_headers; ++i) {
+
+        if (CMP_HEADER("Connection")) {
+            client.request.keep_alive =
+                headers[i].value_len > 0 &&
+                tolower(headers[i].value[0]) == 'k';
+        } else if (CMP_HEADER("Content-Length")) {
+            client.request.body_len = strtol(headers[i].value, NULL, 10);
+        }
+    }
+
+#undef CMP_HEADER
+}
+
+
+void HttpServer::SendResponse(HttpClient &client)
+{
+    FD_SET(client.fd, &so.writefds);
+
+    int len = 0;
+    char *response = client.response.GenerateResponse(len);
+
+    client.write_buf = new char[len];
+    memcpy(client.write_buf, response, len);
+    client.write_buf_len += len;
+
+    free(response);
 }
 
 
@@ -142,14 +216,37 @@ void HttpServer::Serve()
         if (FD_ISSET(listen_fd, &readfds)) AcceptNewConnection();
 
         for (int i = 0; i < n_clients; ++i) {
-            if (FD_ISSET(clients[i].fd, &readfds)) ProcessRequest(clients[i]);
-            if (FD_ISSET(clients[i].fd, &writefds)) SendResponse(clients[i]);
+            if (FD_ISSET(clients[i].fd, &readfds)) {
+                LOG_D("Got data from %s (%d)",
+                    clients[i].s_addr, clients[i].fd);
+
+                if (clients[i].Read()) {
+                    ProcessRequest(clients[i]);
+                } else {
+                    DeleteClient(clients[i].fd);
+                }
+            }
+
+            if (FD_ISSET(clients[i].fd, &writefds)) {
+                LOG_D("Sending data to %s (%d)",
+                    clients[i].s_addr, clients[i].fd);
+
+                if (clients[i].Send()) {
+                    LOG_D("Successfully sent data to %s (%d)",
+                        clients[i].s_addr, clients[i].fd);
+
+                    FD_CLR(clients[i].fd, &so.writefds);
+                    DeleteClient(clients[i].fd);
+                    // if (!clients[i].keep_alive) DeleteClient(clients[i].fd);
+                } else {
+                    DeleteClient(clients[i].fd);
+                }
+            }
         }
 
         writefds = so.writefds;
         readfds = so.readfds;
     }
-    perror("select");
 }
 
 
@@ -157,9 +254,10 @@ void HttpServer::AddNewClient(int fd, char *s_addr)
 {
     clients[n_clients].fd = fd;
 
-    //not sure yet how long buf should be
-    clients[n_clients].read_buf = NULL;
+    clients[n_clients].read_buf_len = 0;
+
     clients[n_clients].write_buf = NULL;
+    clients[n_clients].write_buf_len = 0;
 
     clients[n_clients].s_addr = strdup(s_addr);
 
@@ -173,17 +271,23 @@ void HttpServer::AddNewClient(int fd, char *s_addr)
 void HttpServer::DeleteClient(int fd)
 {
     int i;
+    //use binary search here
     for (i = 0; i < n_clients; ++i) {
         if (clients[i].fd == fd) break;
     }
 
     LOG_I("Closing connection for %s (%d)", clients[i].s_addr, clients[i].fd);
 
-    clients[i].~Client();
-    memmove(clients + i, clients + i + 1, sizeof(Client) * (n_clients - i - 1));
 
-    FD_CLR(fd, &so.readfds);
-    FD_CLR(fd, &so.writefds);
+    clients[i].~HttpClient();
+    clients[i] = HttpClient();
+    // clients[i].request = HttpRequest();
+    // clients[i].response = HttpResponse();
+
+    memmove(clients + i, clients + i + 1, sizeof(HttpClient) * (n_clients - i - 1));
+
+    if (FD_ISSET(fd, &so.readfds)) FD_CLR(fd, &so.readfds);
+    if (FD_ISSET(fd, &so.writefds)) FD_CLR(fd, &so.writefds);
 
     n_clients--;
 }
@@ -244,26 +348,4 @@ SelectOpts::SelectOpts()
     FD_ZERO(&writefds);
 }
 
-
-Client::Client()
-    : fd(0),
-    read_buf(NULL),
-    write_buf(NULL),
-    s_addr(NULL)
-{
-}
-
-
-Client::~Client()
-{
-    if (fd) {
-        shutdown(fd, SHUT_RDWR);
-        close(fd);
-    }
-
-    if (read_buf) free(read_buf);
-    if (write_buf) free(write_buf);
-    if (s_addr) free(s_addr);
-
-}
 
