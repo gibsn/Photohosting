@@ -276,13 +276,13 @@ void HttpServer::AddNewClient(int fd, char *s_addr)
 void HttpServer::DeleteClient(int fd)
 {
     int i;
-    int max_fd = 0;
+    int max_fd = listen_fd;
     //use binary search here
     int curr_fd;
     for (i = 0; i < n_clients; ++i) {
         curr_fd = clients[i].fd;
-        if (curr_fd > max_fd) max_fd = curr_fd;
         if (curr_fd == fd) break;
+        if (curr_fd > max_fd) max_fd = curr_fd;
     }
 
     LOG_I("Closing connection for %s (%d)", clients[i].s_addr, clients[i].fd);
