@@ -50,6 +50,7 @@ void HttpServer::SetArgs(const Config &cfg)
 void HttpServer::Init()
 {
     listen_fd = socket(PF_INET, SOCK_STREAM, 0);
+    // listen_fd = socket(PF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
 
     if (listen_fd == -1) {
         LOG_E("Could not create a socket to listen on: %s",
@@ -275,9 +276,13 @@ void HttpServer::AddNewClient(int fd, char *s_addr)
 void HttpServer::DeleteClient(int fd)
 {
     int i;
+    int max_fd = 0;
     //use binary search here
+    int curr_fd;
     for (i = 0; i < n_clients; ++i) {
-        if (clients[i].fd == fd) break;
+        curr_fd = clients[i].fd;
+        if (curr_fd > max_fd) max_fd = curr_fd;
+        if (curr_fd == fd) break;
     }
 
     LOG_I("Closing connection for %s (%d)", clients[i].s_addr, clients[i].fd);
@@ -285,16 +290,15 @@ void HttpServer::DeleteClient(int fd)
     clients[i].~HttpClient();
 
     for (int j = i + 1; j < n_clients; ++j) {
+        if (clients[j].fd > max_fd) max_fd = clients[j].fd;
         clients[j - 1] = clients[j];
     }
+    clients[n_clients - 1] = HttpClient();
+    so.nfds = max_fd + 1;
     // memmove(clients + i, clients + i + 1, sizeof(HttpClient) * (n_clients - i - 1));
 
     if (FD_ISSET(fd, &so.readfds)) FD_CLR(fd, &so.readfds);
     if (FD_ISSET(fd, &so.writefds)) FD_CLR(fd, &so.writefds);
-
-    //
-    // shutdown(fd, SHUT_RDWR);
-    // close(fd);
 
     n_clients--;
 }
