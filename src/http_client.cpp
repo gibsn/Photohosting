@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "common.h"
 #include "log.h"
 
 
@@ -48,6 +49,7 @@ bool HttpClient::Read()
 
 bool HttpClient::Send()
 {
+    // hexdump((uint8_t *)write_buf, write_buf_len);
     int n = write(fd, write_buf, write_buf_len);
 
     if (n <= 0) {

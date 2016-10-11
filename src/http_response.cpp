@@ -1,5 +1,6 @@
 #include "http_response.h"
 
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -7,8 +8,8 @@
 
 
 HttpResponse::HttpResponse()
-    : headers_list(NULL),
-    n_headers(0),
+    : response(NULL),
+    response_len(0),
     body(NULL),
     body_len(0)
 {
@@ -17,33 +18,27 @@ HttpResponse::HttpResponse()
 
 HttpResponse::~HttpResponse()
 {
-    HeadersList *p = headers_list;
-
-    while(p) {
-        free((char *)p->header.name);
-        free((char *)p->header.value);
-
-        HeadersList *tmp = p;
-        p = p->next;
-
-        delete tmp;
-    }
+    if (response) free(response);
+    if (body) free(body);
 }
 
 
 void HttpResponse::AddHeader(const char *name, const char *value)
 {
-    HeadersList *new_header = new HeadersList;
+    int len = strlen(name) + strlen(": ") + strlen(value) + strlen("\r\n");
+    response = (char *)realloc(response, response_len + len);
 
-    new_header->header.name = strdup(name);
-    new_header->header.name_len = strlen(name);
-    new_header->header.value = strdup(value);
-    new_header->header.value_len = strlen(value);
+    memcpy(response + response_len, name, strlen(name));
+    response_len += strlen(name);
 
-    new_header->next = headers_list;
-    headers_list = new_header;
+    memcpy(response + response_len, ": ", strlen(": "));
+    response_len += strlen(": ");
 
-    n_headers++;
+    memcpy(response + response_len, value, strlen(value));
+    response_len += strlen(value);
+
+    memcpy(response + response_len, "\r\n", strlen("\r\n"));
+    response_len += strlen("\r\n");
 }
 
 
@@ -56,7 +51,7 @@ void HttpResponse::AddDateHeader()
 }
 
 
-char *HttpResponse::GenerateResponse(int &len)
+void HttpResponse::AddStatusLine()
 {
     const char *s_code;
 
@@ -74,53 +69,45 @@ char *HttpResponse::GenerateResponse(int &len)
         ;
     }
 
-    len = 11 + strlen(s_code);
+    int len = 11 + strlen(s_code);
     // +1 cause snprintf wants to write \0
-    char *response = (char *)malloc(sizeof(char) * (len + 1));
-    snprintf(response, len + 1, "HTTP/1.%d %s\r\n", minor_version, s_code);
+    response = (char *)realloc(response, sizeof(char) * (len + 1));
+    int ret =
+        snprintf(response, len + 1, "HTTP/1.%d %s\r\n", minor_version, s_code);
+    assert(ret);
 
-    HeadersList *header = headers_list;
-    char *s_header;
-    int s_header_len;
-    while (header) {
-        s_header = HeaderToStr(header->header);
-        s_header_len = strlen(s_header);
-
-        LOG_E("%s", s_header);
-        response = (char *)realloc(response, len + s_header_len);
-        memcpy(response + len, s_header, s_header_len);
-
-        len += s_header_len;
-
-        free(s_header);
-        header = header->next;
-    }
-
-    response = (char *)realloc(response, len + 2);
-    memcpy(response + len, "\r\n", 2);
-
-    len += 2;
-
-    // hexdump((uint8_t *)response, len);
-
-    return response;
-
-#undef HEAD
+    response_len += len;
 }
 
 
-char *HttpResponse::HeaderToStr(const phr_header &header)
+void HttpResponse::AddConnectionHeader(bool keep_alive)
 {
-    int len = header.name_len + header.value_len + 5;
-    char *buf = (char *)malloc(sizeof(char) * len);
-
-    memcpy(buf, header.name, header.name_len);
-    memcpy(buf + header.name_len, ": ", 2);
-    memcpy(buf + header.name_len + 2, header.value, header.value_len);
-    memcpy(buf + header.name_len + 2 + header.value_len, "\r\n", 2);
-
-    buf[len - 1] = '\0';
-
-    return buf;
+    AddHeader( "Connection", keep_alive? "keep-alive" : "close");
 }
 
+void HttpResponse::AddContentLengthHeader()
+{
+    char buf[32];
+    int ret = snprintf(buf, sizeof(buf), "%d", body_len);
+    assert(ret);
+
+    AddHeader("Content-Length", buf);
+}
+
+
+void HttpResponse::CloseHeaders()
+{
+    response = (char *)realloc(response, response_len + strlen("\r\n"));
+    memcpy(response + response_len, "\r\n", strlen("\r\n"));
+    response_len += strlen("\r\n");
+}
+
+
+void HttpResponse::AddBody()
+{
+   if (body_len) {
+       response = (char *)realloc(response, response_len + body_len);
+       memcpy(response + response_len, body, body_len);
+       response_len += body_len;
+    }
+}

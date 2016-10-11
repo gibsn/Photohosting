@@ -57,6 +57,7 @@ class HttpServer {
     void ProcessRequest(HttpClient &);
     void SendResponse(HttpClient &);
 
+    void RespondAny(HttpClient &);
     void RespondOk(HttpClient &);
 
 public:

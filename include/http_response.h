@@ -15,14 +15,11 @@ typedef enum {
 
 
 struct HttpResponse {
+    char *response;
+    int response_len;
+
     int minor_version;
     http_status_t code;
-
-    struct HeadersList {
-        struct phr_header header;
-        struct HeadersList *next;
-    } *headers_list;
-    size_t n_headers;
 
     char *body;
     int body_len;
@@ -30,11 +27,20 @@ struct HttpResponse {
     HttpResponse();
     ~HttpResponse();
 
-    void AddHeader(const char *, const char *);
-    void AddDateHeader();
+    void AddStatusLine();
 
-    char *HeaderToStr(const phr_header &);
-    char *GenerateResponse(int &);
+    void AddHeader(const char *, const char *);
+
+    //Genereal headers
+    void AddDateHeader();
+    void AddConnectionHeader(bool);
+
+    //Entity headers
+    void AddContentLengthHeader();
+
+    void CloseHeaders();
+
+    void AddBody();
 };
 
 

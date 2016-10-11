@@ -106,24 +106,33 @@ void HttpServer::Listen()
 }
 
 
+void HttpServer::RespondAny(HttpClient &client)
+{
+    client.response.minor_version = client.request.minor_version;
+    client.response.AddStatusLine();
+
+    client.response.AddDateHeader();
+    // client.response.AddConnectionHeader(client.request.keep_alive);
+    client.response.AddConnectionHeader(false);
+
+    client.response.AddContentLengthHeader();
+
+    client.response.CloseHeaders();
+
+    client.response.AddBody();
+
+    SendResponse(client);
+}
+
 
 void HttpServer::RespondOk(HttpClient &client)
 {
     client.response.code = http_ok;
-    client.response.minor_version = client.request.minor_version;
-
-    client.response.AddDateHeader();
-    client.response.AddHeader(
-        "Connection", client.request.keep_alive? "keep-alive" : "close");
 
     client.response.body_len = 0;
     client.response.body = NULL;
 
-    char buf[32];
-    snprintf(buf, sizeof(buf), "%d", client.response.body_len);
-    client.response.AddHeader("Content-Length", buf);
-
-    SendResponse(client);
+    RespondAny(client);
 }
 
 
@@ -195,14 +204,9 @@ void HttpServer::SendResponse(HttpClient &client)
 {
     FD_SET(client.fd, &so.writefds);
 
-    int len = 0;
-    char *response = client.response.GenerateResponse(len);
-
-    client.write_buf = new char[len];
-    memcpy(client.write_buf, response, len);
-    client.write_buf_len += len;
-
-    free(response);
+    client.write_buf = new char[client.response.response_len];
+    memcpy(client.write_buf, client.response.response, client.response.response_len);
+    client.write_buf_len += client.response.response_len;
 }
 
 
@@ -278,14 +282,19 @@ void HttpServer::DeleteClient(int fd)
 
     LOG_I("Closing connection for %s (%d)", clients[i].s_addr, clients[i].fd);
 
-
     clients[i].~HttpClient();
-    clients[i] = HttpClient();
 
-    memmove(clients + i, clients + i + 1, sizeof(HttpClient) * (n_clients - i - 1));
+    for (int j = i + 1; j < n_clients; ++j) {
+        clients[j - 1] = clients[j];
+    }
+    // memmove(clients + i, clients + i + 1, sizeof(HttpClient) * (n_clients - i - 1));
 
     if (FD_ISSET(fd, &so.readfds)) FD_CLR(fd, &so.readfds);
     if (FD_ISSET(fd, &so.writefds)) FD_CLR(fd, &so.writefds);
+
+    //
+    // shutdown(fd, SHUT_RDWR);
+    // close(fd);
 
     n_clients--;
 }
