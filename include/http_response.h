@@ -31,8 +31,9 @@ struct HttpResponse {
 
     void AddHeader(const char *, const char *);
 
-    //Genereal headers
+    //General headers
     void AddDateHeader();
+    void AddServerHeader();
     void AddConnectionHeader(bool);
 
     //Entity headers

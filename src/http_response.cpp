@@ -25,20 +25,26 @@ HttpResponse::~HttpResponse()
 
 void HttpResponse::AddHeader(const char *name, const char *value)
 {
-    int len = strlen(name) + strlen(": ") + strlen(value) + strlen("\r\n");
+    int len = strlen(name) + 2 + strlen(value) + 2;
     response = (char *)realloc(response, response_len + len);
 
     memcpy(response + response_len, name, strlen(name));
     response_len += strlen(name);
 
-    memcpy(response + response_len, ": ", strlen(": "));
-    response_len += strlen(": ");
+    memcpy(response + response_len, ": ", 2);
+    response_len += 2;
 
     memcpy(response + response_len, value, strlen(value));
     response_len += strlen(value);
 
-    memcpy(response + response_len, "\r\n", strlen("\r\n"));
-    response_len += strlen("\r\n");
+    memcpy(response + response_len, "\r\n", 2);
+    response_len += 2;
+}
+
+
+void HttpResponse::AddServerHeader()
+{
+    AddHeader("Server", "gibsnHttpServer");
 }
 
 

@@ -5,69 +5,32 @@
 
 #include "picohttpparser.h"
 
-#include "http_client.h"
-
-
-#define MAX_CLIENTS 1024
+#include "http_session.h"
+#include "tcp_server.h"
 
 
 struct Config;
 
 
-struct SelectOpts {
-    int nfds;
-    fd_set readfds;
-    fd_set writefds;
+class HttpServer: public TcpServer {
+    int n_sessions;
+    HttpSession **sessions;
 
-    SelectOpts();
-};
+    void Respond(int, char *);
 
+    HttpSession *GetSessionByFd(int);
 
-struct Worker {
-    pid_t pid;
-};
-
-
-class HttpServer {
-    char *addr;
-    int port;
-
-    int n_workers;
-    Worker *workers;
-    bool is_slave;
-
-    int listen_fd;
-
-    SelectOpts so;
-
-    int n_clients;
-    HttpClient *clients;
-
-    void Listen();
-    void Serve();
-    void Wait();
-
-    void AcceptNewConnection();
-    void AddNewClient(int, char *);
-    void DeleteClient(int);
-
-    bool ParseHttpRequest(HttpClient &);
-    void ProcessHeaders(HttpClient &);
-
-    void ProcessRequest(HttpClient &);
-    void SendResponse(HttpClient &);
-
-    void RespondAny(HttpClient &);
-    void RespondOk(HttpClient &);
+    virtual void CloseSession(int);
+    virtual int CreateNewSession();
+    virtual bool ProcessRequest(int);
 
 public:
     HttpServer();
-    ~HttpServer();
+    HttpServer(const Config &);
+    virtual ~HttpServer();
 
-    void Init();
-    void SetArgs(const Config &);
-
-    void ListenAndServe();
+    virtual void Init();
+    virtual void ListenAndServe();
 };
 
 

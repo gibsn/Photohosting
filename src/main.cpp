@@ -6,7 +6,7 @@
 #include "log.h"
 
 /*TODO:
-**  Inheritance for http_responses
+  move select to another module
 */
 
 int main(int argc, char **argv)
@@ -23,8 +23,7 @@ int main(int argc, char **argv)
     LOG_I("Initialised logging");
 
     LOG_I("Starting server");
-    HttpServer server;
-    server.SetArgs(cfg);
+    HttpServer server(cfg);
     server.Init();
     server.ListenAndServe();
 

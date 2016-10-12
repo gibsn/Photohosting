@@ -4,8 +4,7 @@
 
 
 HttpRequest::HttpRequest()
-    : keep_alive(false),
-    method(NULL),
+    : method(NULL),
     method_len(0),
     path(NULL),
     path_len(0),

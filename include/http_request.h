@@ -9,8 +9,6 @@
 #define MAX_HTTP_HEADERS 100
 
 struct HttpRequest {
-    bool keep_alive;
-
     char *method;
     size_t method_len;
 

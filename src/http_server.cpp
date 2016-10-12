@@ -1,18 +1,11 @@
 #include "http_server.h"
 
-#include <assert.h>
-#include <arpa/inet.h>
-#include <fcntl.h>
 #include <ctype.h>
-#include <errno.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/select.h>
 #include <sys/socket.h>
-#include <sys/wait.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "common.h"
@@ -21,350 +14,131 @@
 #include "log.h"
 
 
-extern int my_pid;
-
-
-HttpServer::HttpServer()
-    : addr(NULL),
-    workers(NULL),
-    listen_fd(0),
-    n_clients(0),
-    clients(NULL)
-{}
-
-
-HttpServer::~HttpServer()
+HttpSession *HttpServer::GetSessionByFd(int fd)
 {
-    if (addr) free(addr);
-    if (workers) delete[] workers;
-    if (clients) delete[] clients;
-}
-
-
-void HttpServer::SetArgs(const Config &cfg)
-{
-    addr = strdup(cfg.addr);
-    port = cfg.port;
-    n_workers = cfg.n_workers;
-}
-
-
-void HttpServer::Init()
-{
-    listen_fd = socket(PF_INET, SOCK_STREAM, 0);
-
-    if (listen_fd == -1) {
-        LOG_E("Could not create a socket to listen on: %s",
-            strerror(errno));
-        exit(1);
+    for (int i = 0; i < n_sessions; ++i) {
+        if (sessions[i]->GetFd() == fd) return sessions[i];
     }
 
-    int args = fcntl(listen_fd, F_GETFD, 0);
-    assert(args != -1);
-    assert(fcntl(listen_fd, F_SETFL, args | O_NONBLOCK) != -1);
+    return sessions[0];
+}
 
-    int opt = 1;
-    int r = setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-    assert(r != -1);
 
-    struct sockaddr_in sin_addr;
-    sin_addr.sin_family = AF_INET;
-    sin_addr.sin_port = htons(port);
-    inet_pton(AF_INET, addr, &sin_addr.sin_addr.s_addr);
+void HttpServer::Respond(int fd, char *response)
+{
+    TcpServer::WriteTo(fd, response);
+}
 
-    if (bind(listen_fd, (struct sockaddr *)&sin_addr, sizeof(sin_addr) )) {
-        LOG_E("Could not bind to %s:%d: %s", addr, port, strerror(errno));
-        exit(1);
+
+bool HttpServer::ProcessRequest(int fd)
+{
+    bool ret = true;
+
+    HttpSession *session = GetSessionByFd(fd);
+
+    char *read_buf = TcpServer::ReadFrom(fd);
+    // hexdump((uint8_t *)read_buf, strlen(read_buf));
+    if (!session->ParseHttpRequest(read_buf)) {
+        ret = false;
+        goto fin;
     }
 
-    workers = new Worker[n_workers];
-    clients = new HttpClient[MAX_CLIENTS];
-}
+    LOG_D("Processing HTTP-request");
 
+#define LOCATION_IS(str) \
+    !strncmp(session->GetRequest()->path, str, session->GetRequest()->path_len)
 
-void HttpServer::Listen()
-{
-    if (listen(listen_fd, 5)) {
-        LOG_E("Could not start listening: %s", strerror(errno));
-        exit(1);
-    }
-
-    LOG_I("Started listening on %s:%d", addr, port);
-    FD_SET(listen_fd, &so.readfds);
-    so.nfds = listen_fd + 1;
-
-    is_slave = false;
-    int pid;
-    for (int i = 0; i < n_workers; ++i) {
-        pid = fork();
-
-        if (pid == -1) {
-            LOG_E("Could not fork a worker: %s", strerror(errno));
-            exit(1);
-        } else if (pid != 0) {
-            workers[i].pid = pid;
-            LOG_I("Forked a worker with PID %d", pid);
-        } else {
-            my_pid = getpid();
-            is_slave = true;
-            break;
-        }
-    }
-}
-
-
-void HttpServer::RespondAny(HttpClient &client)
-{
-    client.response.minor_version = client.request.minor_version;
-    client.response.AddStatusLine();
-
-    client.response.AddDateHeader();
-    // client.response.AddConnectionHeader(client.request.keep_alive);
-    client.response.AddConnectionHeader(false);
-
-    client.response.AddContentLengthHeader();
-
-    client.response.CloseHeaders();
-
-    client.response.AddBody();
-
-    SendResponse(client);
-}
-
-
-void HttpServer::RespondOk(HttpClient &client)
-{
-    client.response.code = http_ok;
-
-    client.response.body_len = 0;
-    client.response.body = NULL;
-
-    RespondAny(client);
-}
-
-
-void HttpServer::ProcessRequest(HttpClient &client)
-{
-    // hexdump((uint8_t *)client.read_buf, client.read_buf_len);
-    if (!ParseHttpRequest(client)) return;
-
-    LOG_D("Processing request from %s (%d)", client.s_addr, client.fd);
-
-    RespondOk(client);
-}
-
-
-bool HttpServer::ParseHttpRequest(HttpClient &client)
-{
-    int res = phr_parse_request(client.read_buf,
-                                client.read_buf_len,
-                                (const char**)&client.request.method,
-                                &client.request.method_len,
-                                (const char **)&client.request.path,
-                                &client.request.path_len,
-                                &client.request.minor_version,
-                                client.request.headers,
-                                &client.request.n_headers,
-                                0);
-
-    if (res == -1) {
-        LOG_E("Failed to parse HTTP-Request from %s (%d)",
-            client.s_addr, client.fd);
-        client.TruncateReadBuf();
-
-        return false;
-    } else if (res == -2) {
-        LOG_W("Got an incomplete HTTP-Request from %s (%d), "
-            "waiting for the rest", client.s_addr, client.fd);
-
-        return false;
-    }
-
-    client.request.body = client.read_buf + res;
-    ProcessHeaders(client);
-
-    return true;
-}
-
-
-void HttpServer::ProcessHeaders(HttpClient &client)
-{
-#define CMP_HEADER(str) !memcmp(headers[i].name, str, headers[i].name_len)
-
-    struct phr_header *headers = client.request.headers;
-    for (int i = 0; i < client.request.n_headers; ++i) {
-
-        if (CMP_HEADER("Connection")) {
-            client.request.keep_alive =
-                headers[i].value_len > 0 &&
-                tolower(headers[i].value[0]) == 'k';
-        } else if (CMP_HEADER("Content-Length")) {
-            client.request.body_len = strtol(headers[i].value, NULL, 10);
-        }
-    }
-
-#undef CMP_HEADER
-}
-
-
-void HttpServer::SendResponse(HttpClient &client)
-{
-    FD_SET(client.fd, &so.writefds);
-
-    client.write_buf = new char[client.response.response_len];
-    memcpy(client.write_buf, client.response.response, client.response.response_len);
-    client.write_buf_len += client.response.response_len;
-}
-
-
-void HttpServer::Serve()
-{
-    fd_set readfds, writefds;
-    writefds = so.writefds;
-    readfds = so.readfds;
-
-    while(select(so.nfds, &readfds, &writefds, NULL, NULL) > 0) {
-        if (FD_ISSET(listen_fd, &readfds)) AcceptNewConnection();
-
-        for (int i = 0; i < n_clients; ++i) {
-            if (FD_ISSET(clients[i].fd, &readfds)) {
-                LOG_D("Got data from %s (%d)",
-                    clients[i].s_addr, clients[i].fd);
-
-                if (clients[i].Read()) {
-                    ProcessRequest(clients[i]);
-                } else {
-                    DeleteClient(clients[i].fd);
-                }
-            }
-
-            if (FD_ISSET(clients[i].fd, &writefds)) {
-                LOG_D("Sending data to %s (%d)",
-                    clients[i].s_addr, clients[i].fd);
-
-                if (clients[i].Send()) {
-                    LOG_D("Successfully sent data to %s (%d)",
-                        clients[i].s_addr, clients[i].fd);
-
-                    FD_CLR(clients[i].fd, &so.writefds);
-                    DeleteClient(clients[i].fd);
-                    // if (!clients[i].keep_alive) DeleteClient(clients[i].fd);
-                } else {
-                    DeleteClient(clients[i].fd);
-                }
-            }
-        }
-
-        writefds = so.writefds;
-        readfds = so.readfds;
-    }
-}
-
-
-void HttpServer::AddNewClient(int fd, char *s_addr)
-{
-    clients[n_clients].fd = fd;
-
-    clients[n_clients].read_buf_len = 0;
-
-    clients[n_clients].write_buf = NULL;
-    clients[n_clients].write_buf_len = 0;
-
-    clients[n_clients].s_addr = strdup(s_addr);
-
-    n_clients++;
-
-    FD_SET(fd, &so.readfds);
-    if (fd + 1 > so.nfds) so.nfds = fd + 1;
-}
-
-
-void HttpServer::DeleteClient(int fd)
-{
-    int i;
-    int max_fd = listen_fd;
-    //use binary search here
-    int curr_fd;
-    for (i = 0; i < n_clients; ++i) {
-        curr_fd = clients[i].fd;
-        if (curr_fd == fd) break;
-        if (curr_fd > max_fd) max_fd = curr_fd;
-    }
-
-    LOG_I("Closing connection for %s (%d)", clients[i].s_addr, clients[i].fd);
-
-    clients[i].~HttpClient();
-
-    for (int j = i + 1; j < n_clients; ++j) {
-        if (clients[j].fd > max_fd) max_fd = clients[j].fd;
-        clients[j - 1] = clients[j];
-    }
-    clients[n_clients - 1] = HttpClient();
-    so.nfds = max_fd + 1;
-    // memmove(clients + i, clients + i + 1, sizeof(HttpClient) * (n_clients - i - 1));
-
-    if (FD_ISSET(fd, &so.readfds)) FD_CLR(fd, &so.readfds);
-    if (FD_ISSET(fd, &so.writefds)) FD_CLR(fd, &so.writefds);
-
-    n_clients--;
-}
-
-
-void HttpServer::AcceptNewConnection()
-{
-    struct sockaddr_in client_addr;
-    socklen_t client_len = sizeof(client_addr);
-    int fd = accept(listen_fd, (struct sockaddr *)&client_addr, &client_len);
-
-    if (fd == -1) {
-        if (errno != EAGAIN)
-            LOG_E("Could not accept a new connection: %s", strerror(errno));
-
-        return;
-    }
-
-    char *client_s_addr = inet_ntoa(client_addr.sin_addr);
-    LOG_I("Accepted a new connection from %s", client_s_addr);
-
-    if (n_clients < MAX_CLIENTS) {
-        AddNewClient(fd, client_s_addr);
+    if (LOCATION_IS("/")) {
+        Respond(fd, session->RespondOk());
     } else {
-        shutdown(fd, SHUT_RDWR);
-        close(fd);
-        LOG_W("Declined connection from %s due to reaching MAX_CLIENTS",
-            client_s_addr);
+        Respond(fd, session->RespondNotFound());
     }
+
+    if (!session->GetKeepAlive()) WantToCloseSession(fd);
+
+fin:
+    session->PrepareForNextRequest();
+    free(read_buf);
+    return ret;
+
+#undef LOCATION_IS
 }
 
 
-void HttpServer::Wait()
+void HttpServer::CloseSession(int fd)
 {
-    pid_t pid;
-    for (int i = 0; i < n_workers; ++i) {
-        pid = wait(NULL);
-        LOG_I("Worker %d has exited", pid);
+    TcpServer::CloseSession(fd);
+
+    int i, curr_fd;
+    for (i = 0; i < n_sessions; ++i) {
+        curr_fd = sessions[i]->GetFd();
+        if (curr_fd == fd) break;
     }
+
+    LOG_I("Closing Http-session");
+
+    delete sessions[i];
+
+    for (int j = i + 1; j < n_sessions; ++j) {
+        sessions[j - 1] = sessions[j];
+    }
+    sessions[n_sessions - 1] = NULL;
+    n_sessions--;
+}
+
+
+int HttpServer::CreateNewSession()
+{
+    int fd = TcpServer::CreateNewSession();
+
+    if (n_sessions < MAX_SESSIONS) {
+        sessions[n_sessions] = new HttpSession(fd);
+        n_sessions++;
+    } else {
+        LOG_D("Could not open a new HTTP-session");
+    }
+
+    return fd;
 }
 
 
 void HttpServer::ListenAndServe()
 {
-    Listen();
+    TcpServer::ListenAndServe();
+}
 
-    if (is_slave) {
-        Serve();
-    } else {
-        close(listen_fd);
-        Wait();
+
+void HttpServer::Init()
+{
+    TcpServer::Init();
+
+    sessions = new HttpSession *[MAX_SESSIONS];
+}
+
+
+HttpServer::HttpServer()
+    : n_sessions(0),
+    sessions(0)
+{
+}
+
+
+HttpServer::HttpServer(const Config &cfg)
+    : TcpServer(cfg),
+    n_sessions(0),
+    sessions(0)
+{
+}
+
+
+HttpServer::~HttpServer()
+{
+    if (sessions) {
+        for (int i = 0; i < n_sessions; ++i) {
+            delete sessions[i];
+        }
+
+        delete[] sessions;
     }
 }
-
-
-SelectOpts::SelectOpts()
-    : nfds(0)
-{
-    FD_ZERO(&readfds);
-    FD_ZERO(&writefds);
-}
-
 
