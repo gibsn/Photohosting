@@ -1,6 +1,8 @@
 #include "http_server.h"
 
+#include <assert.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <ctype.h>
 #include <errno.h>
 #include <netinet/in.h>
@@ -50,7 +52,6 @@ void HttpServer::SetArgs(const Config &cfg)
 void HttpServer::Init()
 {
     listen_fd = socket(PF_INET, SOCK_STREAM, 0);
-    // listen_fd = socket(PF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
 
     if (listen_fd == -1) {
         LOG_E("Could not create a socket to listen on: %s",
@@ -58,8 +59,13 @@ void HttpServer::Init()
         exit(1);
     }
 
+    int args = fcntl(listen_fd, F_GETFD, 0);
+    assert(args != -1);
+    assert(fcntl(listen_fd, F_SETFL, args | O_NONBLOCK) != -1);
+
     int opt = 1;
-    setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+    int r = setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+    assert(r != -1);
 
     struct sockaddr_in sin_addr;
     sin_addr.sin_family = AF_INET;
@@ -311,7 +317,9 @@ void HttpServer::AcceptNewConnection()
     int fd = accept(listen_fd, (struct sockaddr *)&client_addr, &client_len);
 
     if (fd == -1) {
-        LOG_E("Could not accept a new connection: %s", strerror(errno));
+        if (errno != EAGAIN)
+            LOG_E("Could not accept a new connection: %s", strerror(errno));
+
         return;
     }
 
