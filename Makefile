@@ -38,6 +38,8 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 bridge.touch:
+	git submodule init
+	git submodule update
 	mkdir -p $(OBJ_DIR)
 	mkdir -p $(DEPS_DIR)
 	mkdir -p $(BRIDGE_DIR)/include
