@@ -253,6 +253,8 @@ int TcpServer::CreateNewSession()
         close(fd);
         LOG_W("Declined connection from %s due to reaching MAX_SESSIONS",
             client_s_addr);
+
+        return -1;
     }
 
     return fd;

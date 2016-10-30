@@ -91,7 +91,7 @@ int HttpServer::CreateNewSession()
 {
     int fd = TcpServer::CreateNewSession();
 
-    if (n_sessions < MAX_SESSIONS) {
+    if (fd != -1) {
         sessions[n_sessions] = new HttpSession(fd);
         n_sessions++;
     } else {
