@@ -23,6 +23,18 @@ HttpResponse::~HttpResponse()
 }
 
 
+void HttpResponse::AddDefaultHeaders()
+{
+    AddStatusLine();
+
+    AddDateHeader();
+    AddServerHeader();
+    AddConnectionHeader(keep_alive);
+
+    AddContentLengthHeader();
+}
+
+
 void HttpResponse::AddHeader(const char *name, const char *value)
 {
     int len = strlen(name) + 2 + strlen(value) + 2;
@@ -65,11 +77,17 @@ void HttpResponse::AddStatusLine()
     case http_ok:
         s_code = "200 OK";
         break;
+    case http_permanent_redirect:
+        s_code = "308 PERMANENT REDIRECT";
+        break;
     case http_bad_request:
         s_code = "400 BAD REQUEST";
         break;
     case http_not_found:
         s_code = "404 NOT FOUND";
+        break;
+    case http_not_implemented:
+        s_code = "501 NOT IMPLEMENTED";
         break;
     default:
         ;

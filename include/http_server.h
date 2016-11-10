@@ -24,6 +24,9 @@ class HttpServer: public TcpServer {
     virtual int CreateNewSession();
     virtual bool ProcessRequest(int);
 
+    void ProcessGetRequest(HttpSession *);
+    void ProcessPostRequest(HttpSession *);
+
 public:
     HttpServer();
     HttpServer(const Config &);

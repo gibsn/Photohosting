@@ -9,8 +9,10 @@
 
 typedef enum {
     http_ok = 200,
+    http_permanent_redirect = 308,
     http_bad_request = 400,
-    http_not_found = 404
+    http_not_found = 404,
+    http_not_implemented = 501
 } http_status_t;
 
 
@@ -21,6 +23,8 @@ struct HttpResponse {
     int minor_version;
     http_status_t code;
 
+    bool keep_alive;
+
     char *body;
     int body_len;
 
@@ -30,6 +34,8 @@ struct HttpResponse {
     void AddStatusLine();
 
     void AddHeader(const char *, const char *);
+
+    void AddDefaultHeaders();
 
     //General headers
     void AddDateHeader();

@@ -45,11 +45,14 @@ bool HttpServer::ProcessRequest(int fd)
 
     LOG_D("Processing HTTP-request");
 
-#define LOCATION_IS(str) \
-    !strncmp(session->GetRequest()->path, str, session->GetRequest()->path_len)
+#define METHOD_IS(str)\
+    session->GetRequest()->method_len == strlen(str) && \
+    !strncmp(session->GetRequest()->method, str, session->GetRequest()->method_len)
 
-    if (LOCATION_IS("/")) {
-        Respond(fd, session->RespondOk());
+    if (METHOD_IS("GET")) {
+        ProcessGetRequest(session);
+    } else if (METHOD_IS("POST")) {
+        ProcessPostRequest(session);
     } else {
         Respond(fd, session->RespondNotFound());
     }
@@ -60,9 +63,30 @@ fin:
     session->PrepareForNextRequest();
     free(read_buf);
     return ret;
-
-#undef LOCATION_IS
+#undef METHOD_IS
 }
+
+
+#define LOCATION_IS(str) \
+    session->GetRequest()->path_len == strlen(str) && \
+    !strncmp(session->GetRequest()->path, str, session->GetRequest()->path_len)
+
+void HttpServer::ProcessGetRequest(HttpSession *session)
+{
+    if (LOCATION_IS("/")) {
+        const char *loc = "http://gibsn.hopto.org";
+        Respond(session->GetFd(), session->RespondPermanentRedirect(loc));
+    } else {
+        Respond(session->GetFd(), session->RespondNotFound());
+    }
+}
+
+
+void HttpServer::ProcessPostRequest(HttpSession *session)
+{
+    Respond(session->GetFd(), session->RespondNotImplemented());
+}
+#undef LOCATION_IS
 
 
 void HttpServer::CloseSession(int fd)

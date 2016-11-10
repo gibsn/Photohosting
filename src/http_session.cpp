@@ -37,15 +37,6 @@ HttpSession::~HttpSession()
 
 char *HttpSession::RespondAny()
 {
-    response->minor_version = request->minor_version;
-    response->AddStatusLine();
-
-    response->AddDateHeader();
-    response->AddServerHeader();
-    response->AddConnectionHeader(keep_alive);
-
-    response->AddContentLengthHeader();
-
     response->CloseHeaders();
 
     response->AddBody();
@@ -59,21 +50,67 @@ char *HttpSession::RespondAny()
 
 char *HttpSession::RespondOk()
 {
+    response->minor_version = request->minor_version;
+    response->keep_alive = keep_alive;
+
     response->code = http_ok;
 
     response->body_len = 0;
     response->body = NULL;
 
+    response->AddDefaultHeaders();
+
     return RespondAny();
 }
 
 
+char *HttpSession::RespondPermanentRedirect(const char *location)
+{
+    response->minor_version = request->minor_version;
+    response->keep_alive = keep_alive;
+
+    response->code = http_permanent_redirect;
+
+
+    response->body_len = 0;
+    response->body = NULL;
+
+    response->AddDefaultHeaders();
+
+    response->AddHeader("Location", location);
+
+    return RespondAny();
+}
+
+
+
 char *HttpSession::RespondNotFound()
 {
+    response->minor_version = request->minor_version;
+    response->keep_alive = keep_alive;
+
     response->code = http_not_found;
 
     response->body_len = 0;
     response->body = NULL;
+
+    response->AddDefaultHeaders();
+
+    return RespondAny();
+}
+
+
+char *HttpSession::RespondNotImplemented()
+{
+    response->minor_version = request->minor_version;
+    response->keep_alive = keep_alive;
+
+    response->code = http_not_implemented;
+
+    response->body_len = 0;
+    response->body = NULL;
+
+    response->AddDefaultHeaders();
 
     return RespondAny();
 }
