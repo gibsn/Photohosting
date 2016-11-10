@@ -19,8 +19,6 @@ public:
     HttpSession(int);
     ~HttpSession();
 
-    char *RespondAny();
-
     //2XX
     char *RespondOk();
 

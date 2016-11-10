@@ -34,24 +34,23 @@ HttpSession::~HttpSession()
     if (response) delete response;
 }
 
+#define ESSENTIALS() do {                             \
+    response->minor_version = request->minor_version; \
+    response->keep_alive = keep_alive;                \
+} while(0);
 
-char *HttpSession::RespondAny()
-{
-    response->CloseHeaders();
-
-    response->AddBody();
-
-    response->response = (char *)realloc(response->response, response->response_len + 1);
-    response->response[response->response_len] = '\0';
-
-    return response->response;
-}
+#define FINISH_RESPONSE() do {                                           \
+    response->CloseHeaders();                                            \
+    response->AddBody();                                                 \
+    response->response =                                                 \
+        (char *)realloc(response->response, response->response_len + 1); \
+    response->response[response->response_len] = '\0';                   \
+}while(0);
 
 
 char *HttpSession::RespondOk()
 {
-    response->minor_version = request->minor_version;
-    response->keep_alive = keep_alive;
+    ESSENTIALS();
 
     response->code = http_ok;
 
@@ -60,14 +59,15 @@ char *HttpSession::RespondOk()
 
     response->AddDefaultHeaders();
 
-    return RespondAny();
+    FINISH_RESPONSE();
+
+    return response->response;
 }
 
 
 char *HttpSession::RespondPermanentRedirect(const char *location)
 {
-    response->minor_version = request->minor_version;
-    response->keep_alive = keep_alive;
+    ESSENTIALS();
 
     response->code = http_permanent_redirect;
 
@@ -79,15 +79,16 @@ char *HttpSession::RespondPermanentRedirect(const char *location)
 
     response->AddHeader("Location", location);
 
-    return RespondAny();
+    FINISH_RESPONSE();
+
+    return response->response;
 }
 
 
 
 char *HttpSession::RespondNotFound()
 {
-    response->minor_version = request->minor_version;
-    response->keep_alive = keep_alive;
+    ESSENTIALS();
 
     response->code = http_not_found;
 
@@ -96,24 +97,28 @@ char *HttpSession::RespondNotFound()
 
     response->AddDefaultHeaders();
 
-    return RespondAny();
+    FINISH_RESPONSE();
+
+    return response->response;
 }
 
 
 char *HttpSession::RespondNotImplemented()
 {
-    response->minor_version = request->minor_version;
-    response->keep_alive = keep_alive;
+    ESSENTIALS();
 
     response->code = http_not_implemented;
 
     response->body_len = 0;
     response->body = NULL;
 
-    response->AddDefaultHeaders();
+    FINISH_RESPONSE();
 
-    return RespondAny();
+    return response->response;
 }
+
+#undef ESSENTIALS
+#undef FINISH_RESPONSE
 
 
 bool HttpSession::ParseHttpRequest(char *req)
