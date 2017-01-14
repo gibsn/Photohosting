@@ -86,6 +86,9 @@ void HttpResponse::AddStatusLine()
     case http_not_found:
         s_code = "404 NOT FOUND";
         break;
+    case http_internal_error:
+        s_code = "500 INTERNAL SERVER ERROR";
+        break;
     case http_not_implemented:
         s_code = "501 NOT IMPLEMENTED";
         break;

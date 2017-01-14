@@ -48,7 +48,7 @@ HttpSession::~HttpSession()
 }while(0);
 
 
-char *HttpSession::RespondOk()
+HttpResponse *HttpSession::RespondOk()
 {
     ESSENTIALS();
 
@@ -61,11 +61,33 @@ char *HttpSession::RespondOk()
 
     FINISH_RESPONSE();
 
-    return response->response;
+    return response;
 }
 
 
-char *HttpSession::RespondPermanentRedirect(const char *location)
+HttpResponse *HttpSession::RespondFile(const char *path)
+{
+    ByteArray *file = read_file(path);
+    if (!file) return this->RespondInternalError();
+
+    ESSENTIALS();
+
+    response->code = http_ok;
+
+    response->body_len = file->size;
+    response->body = (char *)malloc(file->size);
+    memcpy(response->body, file->data, file->size);
+    delete(file);
+
+    response->AddDefaultHeaders();
+
+    FINISH_RESPONSE();
+
+    return response;
+}
+
+
+HttpResponse *HttpSession::RespondPermanentRedirect(const char *location)
 {
     ESSENTIALS();
 
@@ -81,12 +103,12 @@ char *HttpSession::RespondPermanentRedirect(const char *location)
 
     FINISH_RESPONSE();
 
-    return response->response;
+    return response;
 }
 
 
 
-char *HttpSession::RespondNotFound()
+HttpResponse *HttpSession::RespondNotFound()
 {
     ESSENTIALS();
 
@@ -99,11 +121,28 @@ char *HttpSession::RespondNotFound()
 
     FINISH_RESPONSE();
 
-    return response->response;
+    return response;
 }
 
 
-char *HttpSession::RespondNotImplemented()
+HttpResponse *HttpSession::RespondInternalError()
+{
+    ESSENTIALS();
+
+    response->code = http_internal_error;
+
+    response->body_len = 0;
+    response->body = NULL;
+
+    response->AddDefaultHeaders();
+
+    FINISH_RESPONSE();
+
+    return response;
+}
+
+
+HttpResponse *HttpSession::RespondNotImplemented()
 {
     ESSENTIALS();
 
@@ -114,7 +153,7 @@ char *HttpSession::RespondNotImplemented()
 
     FINISH_RESPONSE();
 
-    return response->response;
+    return response;
 }
 
 #undef ESSENTIALS

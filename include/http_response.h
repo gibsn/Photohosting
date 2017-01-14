@@ -12,6 +12,7 @@ typedef enum {
     http_permanent_redirect = 308,
     http_bad_request = 400,
     http_not_found = 404,
+    http_internal_error = 500,
     http_not_implemented = 501
 } http_status_t;
 

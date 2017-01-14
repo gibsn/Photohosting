@@ -72,7 +72,7 @@ public:
 
     void WantToCloseSession(int);
 
-    void WriteTo(int, char *);
+    void WriteTo(int, char *, int);
     char *ReadFrom(int);
 
     virtual void Init();

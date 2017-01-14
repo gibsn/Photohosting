@@ -24,9 +24,9 @@ HttpSession *HttpServer::GetSessionByFd(int fd)
 }
 
 
-void HttpServer::Respond(int fd, char *response)
+void HttpServer::Respond(int fd, HttpResponse *response)
 {
-    TcpServer::WriteTo(fd, response);
+    TcpServer::WriteTo(fd, response->response, response->response_len);
 }
 
 
@@ -67,18 +67,34 @@ fin:
 }
 
 
-#define LOCATION_IS(str) \
+#define LOCATION_IS(str)                              \
     session->GetRequest()->path_len == strlen(str) && \
     !strncmp(session->GetRequest()->path, str, session->GetRequest()->path_len)
 
+#define LOCATION_STARTS_WITH(str)  \
+    session->GetRequest()->path == \
+    strnstr(session->GetRequest()->path, str, session->GetRequest()->path_len)
+
 void HttpServer::ProcessGetRequest(HttpSession *session)
 {
+    const HttpRequest *req = session->GetRequest();
+    char *path = strndup(req->path, req->path_len);
+
+    // TODO filter out paths with ..
     if (LOCATION_IS("/")) {
-        const char *loc = "http://gibsn.hopto.org";
-        Respond(session->GetFd(), session->RespondPermanentRedirect(loc));
+        Respond(session->GetFd(), session->RespondOk());
+    } else if (LOCATION_STARTS_WITH("/static/")) {
+        char *file_path = path + sizeof "/static/" - 1;
+        if (file_exists(file_path)) {
+            Respond(session->GetFd(), session->RespondFile(file_path));
+        } else {
+            Respond(session->GetFd(), session->RespondNotFound());
+        }
     } else {
         Respond(session->GetFd(), session->RespondNotFound());
     }
+
+    free(path);
 }
 
 
@@ -87,6 +103,7 @@ void HttpServer::ProcessPostRequest(HttpSession *session)
     Respond(session->GetFd(), session->RespondNotImplemented());
 }
 #undef LOCATION_IS
+#undef LOCATION_CONTAINS
 
 
 void HttpServer::CloseSession(int fd)

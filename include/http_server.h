@@ -16,7 +16,7 @@ class HttpServer: public TcpServer {
     int n_sessions;
     HttpSession **sessions;
 
-    void Respond(int, char *);
+    void Respond(int, HttpResponse *);
 
     HttpSession *GetSessionByFd(int);
 

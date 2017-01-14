@@ -281,10 +281,10 @@ char *TcpServer::ReadFrom(int fd)
 }
 
 
-void TcpServer::WriteTo(int fd, char *buf)
+void TcpServer::WriteTo(int fd, char *buf, int len)
 {
     TcpSession *session = GetSessionByFd(fd);
-    session->SetWriteBuf(buf);
+    session->SetWriteBuf(buf, len);
     FD_SET(fd, &so.writefds);
 }
 

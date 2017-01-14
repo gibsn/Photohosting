@@ -31,7 +31,7 @@ public:
     char *GetReadBuf() const;
     bool GetWantToClose() const { return want_to_close; }
 
-    void SetWriteBuf(char *);
+    void SetWriteBuf(char *, int);
     void SetWantToClose(bool b) { want_to_close = b; }
 
     void TruncateReadBuf();

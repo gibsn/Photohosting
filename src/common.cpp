@@ -1,9 +1,12 @@
 #include "common.h"
 
 #include <arpa/inet.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "log.h"
@@ -123,6 +126,41 @@ bool process_cmd_arguments(int argc, char **argv, Config &cfg)
     }
 
     return true;
+}
+
+
+ByteArray *read_file(const char *path)
+{
+    int fd = open(path, O_RDONLY);
+    if (fd == -1) {
+        LOG_E("Could not read file %s: %s", path, strerror(errno));
+        return NULL;
+    }
+
+    struct stat file_stat;
+    int ret = fstat(fd, &file_stat);
+    if (ret) {
+        close(fd);
+        LOG_E("%s", strerror(errno));
+        return NULL;
+    }
+
+    char *buf = (char *)malloc(file_stat.st_size);
+    int n = read(fd, buf, file_stat.st_size);
+    close(fd);
+    if (n != file_stat.st_size) {
+        LOG_E("Could not read file %s", path);
+        free(buf);
+        return NULL;
+    }
+
+    return new ByteArray(buf, file_stat.st_size);
+}
+
+
+bool file_exists(const char *path)
+{
+    return !access(path, R_OK);
 }
 
 

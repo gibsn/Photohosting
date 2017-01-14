@@ -95,11 +95,11 @@ char *TcpSession::GetReadBuf() const
 }
 
 
-void TcpSession::SetWriteBuf(char *buf)
+void TcpSession::SetWriteBuf(char *buf, int len)
 {
-    write_buf_len = strlen(buf);
-    write_buf = (char *)malloc(write_buf_len);
-    memcpy(write_buf, buf, write_buf_len);
+    write_buf_len = len;
+    write_buf = (char *)malloc(len);
+    memcpy(write_buf, buf, len);
 }
 
 

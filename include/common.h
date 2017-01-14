@@ -19,8 +19,21 @@ struct Config
 };
 
 
+struct ByteArray
+{
+    char *data;
+    int size;
+
+    ByteArray() : data(NULL), size(0) {};
+    ByteArray(char * _data, int _size) : data(_data), size(_size) {};
+    ~ByteArray() { if (data) free(data); }
+};
+
+
 bool process_cmd_arguments(int, char **, Config &);
 void hexdump(uint8_t *, size_t);
+ByteArray *read_file(const char *);
+bool file_exists(const char *);
 
 
 

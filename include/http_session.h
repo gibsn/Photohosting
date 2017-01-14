@@ -20,16 +20,18 @@ public:
     ~HttpSession();
 
     //2XX
-    char *RespondOk();
+    HttpResponse *RespondOk();
+    HttpResponse *RespondFile(const char *);
 
     //3XX
-    char *RespondPermanentRedirect(const char *);
+    HttpResponse *RespondPermanentRedirect(const char *);
 
     //4XX
-    char *RespondNotFound();
+    HttpResponse *RespondNotFound();
 
     //5XX
-    char *RespondNotImplemented();
+    HttpResponse *RespondInternalError();
+    HttpResponse *RespondNotImplemented();
 
     bool ParseHttpRequest(char *);
     void ProcessHeaders();
