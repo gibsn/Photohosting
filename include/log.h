@@ -6,12 +6,17 @@
 #include <syslog.h>
 #include <sys/types.h>
 #include <time.h>
+#include <unistd.h>
 
 
 extern pid_t my_pid;
 extern int max_log_level;
 
-//todo: fix logging, merges when multiple processes are launched
+//TODO: fix logging, merges when multiple processes are launched
+
+
+void get_pid_for_logger();
+void set_max_log_level(int);
 
 
 #define     LOG_ESCAPE(x)          "\033[01;" #x "m"

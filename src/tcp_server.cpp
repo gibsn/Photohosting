@@ -204,7 +204,7 @@ void TcpServer::CloseSession(int fd)
 {
     int i;
     int max_fd = listen_fd;
-    //use binary search here
+    //TODO: use binary search here
     int curr_fd;
     for (i = 0; i < n_sessions; ++i) {
         curr_fd = sessions[i]->GetFd();
@@ -221,7 +221,6 @@ void TcpServer::CloseSession(int fd)
     }
     sessions[n_sessions - 1] = NULL;
     so.nfds = max_fd + 1;
-    // memmove(sessions + i, sessions + i + 1, sizeof(HttpClient) * (n_sessions - i - 1));
 
     if (FD_ISSET(fd, &so.readfds)) FD_CLR(fd, &so.readfds);
     if (FD_ISSET(fd, &so.writefds)) FD_CLR(fd, &so.writefds);

@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <unistd.h>
 
 #include "common.h"
 #include "http_server.h"
@@ -22,8 +21,8 @@ int main(int argc, char **argv)
     LOG_I("Initialised config");
 
     //global variables from log.h
-    my_pid = getpid();
-    max_log_level = cfg.max_log_level;
+    get_pid_for_logger();
+    set_max_log_level(cfg.max_log_level);
     LOG_I("Initialised logging");
 
     LOG_I("Starting server");
