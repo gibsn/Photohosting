@@ -230,6 +230,25 @@ void TcpServer::CloseSession(int fd)
 }
 
 
+static bool set_socket_blocking(int sock)
+{
+    int opts;
+
+    opts = fcntl(sock, F_GETFL);
+    if (opts < 0) {
+        LOG_E("Could not make socket blocking: %s", strerror(errno));
+        return false;
+    }
+    opts = (opts & (~O_NONBLOCK));
+    if (fcntl(sock, F_SETFL, opts) < 0) {
+        LOG_E("Could not make socket blocking: %s", strerror(errno));
+        return false;
+    }
+
+    return true;
+}
+
+
 int TcpServer::CreateNewSession()
 {
     struct sockaddr_in client_addr;
@@ -242,6 +261,9 @@ int TcpServer::CreateNewSession()
 
         return -1;
     }
+
+    //BSD's accept creates new socket with the same properties as the listening
+    if (!set_socket_blocking(fd)) return -1;
 
     char *client_s_addr = inet_ntoa(client_addr.sin_addr);
     LOG_I("Accepted a new connection from %s", client_s_addr);

@@ -71,17 +71,29 @@ bool TcpSession::Read()
 
 bool TcpSession::Send()
 {
-    int n = write(fd, write_buf, write_buf_len);
+    int ret = true;
+    int offset = 0;
+    int n;
+    while (write_buf_len != 0) {
+        n = write(fd, write_buf + offset, write_buf_len);
+
+        if (n <= 0) {
+            perror("write");
+            LOG_E("Some error occurred while writing to %s (%d)", s_addr, fd);
+            ret = false;
+            break;
+        }
+
+        offset += n;
+        write_buf_len -= n;
+    }
+
     free(write_buf);
+
     write_buf = NULL;
     write_buf_len = 0;
 
-    if (n <= 0) {
-        LOG_E("Some error occurred while writing to %s (%d)", s_addr, fd);
-        return false;
-    }
-
-    return true;
+    return ret;
 }
 
 

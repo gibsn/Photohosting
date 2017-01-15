@@ -77,6 +77,7 @@ HttpResponse *HttpSession::RespondFile(const char *path)
     response->body_len = file->size;
     response->body = (char *)malloc(file->size);
     memcpy(response->body, file->data, file->size);
+
     delete(file);
 
     response->AddDefaultHeaders();

@@ -96,9 +96,10 @@ void HttpResponse::AddStatusLine()
         ;
     }
 
-    int len = 11 + strlen(s_code);
-    // +1 cause snprintf wants to write \0
-    response = (char *)realloc(response, sizeof(char) * (len + 1));
+    int len = sizeof("HTTP/1.X \r\n") - 1 + strlen(s_code);
+
+    // +1 because snprintf wants to write \0
+    response = (char *)realloc(response, len + 1);
     int ret =
         snprintf(response, len + 1, "HTTP/1.%d %s\r\n", minor_version, s_code);
     assert(ret);

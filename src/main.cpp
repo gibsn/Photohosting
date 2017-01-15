@@ -10,6 +10,7 @@
   chdir to path from cfg
   add cfg
   fix diag msg when fork exits
+  linux doesnt have strnstr, wont compile
 */
 
 int main(int argc, char **argv)
