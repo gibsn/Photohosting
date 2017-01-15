@@ -67,16 +67,9 @@ fin:
 }
 
 
-#define LOCATION_IS(str)                              \
-    session->GetRequest()->path_len == strlen(str) && \
-    !strncmp(session->GetRequest()->path, str, session->GetRequest()->path_len)
-
-#define LOCATION_CONTAINS(str)  \
-    strnstr(session->GetRequest()->path, str, session->GetRequest()->path_len)
-
-#define LOCATION_STARTS_WITH(str)  \
-    session->GetRequest()->path == \
-    strnstr(session->GetRequest()->path, str, session->GetRequest()->path_len)
+#define LOCATION_IS(str) !strcmp(path, str)
+#define LOCATION_CONTAINS(str) strstr(path, str)
+#define LOCATION_STARTS_WITH(str) path == strstr(path, str)
 
 void HttpServer::ProcessGetRequest(HttpSession *session)
 {
@@ -101,6 +94,7 @@ void HttpServer::ProcessGetRequest(HttpSession *session)
 
     free(path);
 }
+
 #undef LOCATION_IS
 #undef LOCATION_CONTAINS
 #undef LOCATION_STARTS_WITH
