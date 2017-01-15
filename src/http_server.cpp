@@ -71,6 +71,9 @@ fin:
     session->GetRequest()->path_len == strlen(str) && \
     !strncmp(session->GetRequest()->path, str, session->GetRequest()->path_len)
 
+#define LOCATION_CONTAINS(str)  \
+    strnstr(session->GetRequest()->path, str, session->GetRequest()->path_len)
+
 #define LOCATION_STARTS_WITH(str)  \
     session->GetRequest()->path == \
     strnstr(session->GetRequest()->path, str, session->GetRequest()->path_len)
@@ -80,11 +83,13 @@ void HttpServer::ProcessGetRequest(HttpSession *session)
     const HttpRequest *req = session->GetRequest();
     char *path = strndup(req->path, req->path_len);
 
-    // TODO filter out paths with ..
     if (LOCATION_IS("/")) {
         Respond(session->GetFd(), session->RespondOk());
+    } else if (LOCATION_CONTAINS("/../")) {
+        Respond(session->GetFd(), session->RespondBadRequest());
     } else if (LOCATION_STARTS_WITH("/static/")) {
         char *file_path = path + sizeof "/static/" - 1;
+
         if (file_exists(file_path)) {
             Respond(session->GetFd(), session->RespondFile(file_path));
         } else {
@@ -96,14 +101,15 @@ void HttpServer::ProcessGetRequest(HttpSession *session)
 
     free(path);
 }
+#undef LOCATION_IS
+#undef LOCATION_CONTAINS
+#undef LOCATION_STARTS_WITH
 
 
 void HttpServer::ProcessPostRequest(HttpSession *session)
 {
     Respond(session->GetFd(), session->RespondNotImplemented());
 }
-#undef LOCATION_IS
-#undef LOCATION_CONTAINS
 
 
 void HttpServer::CloseSession(int fd)

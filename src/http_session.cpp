@@ -108,6 +108,22 @@ HttpResponse *HttpSession::RespondPermanentRedirect(const char *location)
 }
 
 
+HttpResponse *HttpSession::RespondBadRequest()
+{
+    ESSENTIALS();
+
+    response->code = http_bad_request;
+
+    response->body_len = 0;
+    response->body = NULL;
+
+    response->AddDefaultHeaders();
+
+    FINISH_RESPONSE();
+
+    return response;
+}
+
 
 HttpResponse *HttpSession::RespondNotFound()
 {

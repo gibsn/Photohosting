@@ -27,6 +27,7 @@ public:
     HttpResponse *RespondPermanentRedirect(const char *);
 
     //4XX
+    HttpResponse *RespondBadRequest();
     HttpResponse *RespondNotFound();
 
     //5XX

@@ -20,7 +20,6 @@ int main(int argc, char **argv)
     cfg.Check();
     LOG_I("Initialised config");
 
-    //global variables from log.h
     get_pid_for_logger();
     set_max_log_level(cfg.max_log_level);
     LOG_I("Initialised logging");
