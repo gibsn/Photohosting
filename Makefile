@@ -1,5 +1,6 @@
-CXX = g++
-CXXFLAGS = -g -Wall
+-include Makefile.local
+
+CXXFLAGS += -g -Wall
 CXXFLAGS += -Wno-unused-variable -Wno-unused-value -std=c++98 -fpermissive
 #Needed for proper libarchive work
 #CXXFLAGS += -D_FILE_OFFSET_BITS=64
