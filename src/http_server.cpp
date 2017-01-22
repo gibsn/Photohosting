@@ -1,5 +1,6 @@
 #include "http_server.h"
 
+#include <assert.h>
 #include <ctype.h>
 #include <netinet/in.h>
 #include <stdio.h>
@@ -29,6 +30,9 @@ void HttpServer::Respond(int fd, HttpResponse *response)
     TcpServer::WriteTo(fd, response->response, response->response_len);
 }
 
+#define METHOD_IS(str)\
+    session->GetRequest()->method_len == strlen(str) && \
+    !strncmp(session->GetRequest()->method, str, session->GetRequest()->method_len)
 
 bool HttpServer::ProcessRequest(int fd)
 {
@@ -45,10 +49,6 @@ bool HttpServer::ProcessRequest(int fd)
 
     LOG_D("Processing HTTP-request");
 
-#define METHOD_IS(str)\
-    session->GetRequest()->method_len == strlen(str) && \
-    !strncmp(session->GetRequest()->method, str, session->GetRequest()->method_len)
-
     if (METHOD_IS("GET")) {
         ProcessGetRequest(session);
     } else if (METHOD_IS("POST")) {
@@ -63,7 +63,23 @@ fin:
     session->PrepareForNextRequest();
     free(read_buf);
     return ret;
+}
+
 #undef METHOD_IS
+
+
+char *HttpServer::AddPathToStaticPrefix(char *path)
+{
+        int file_path_len = strlen(path) - sizeof "/static";
+        file_path_len += path_to_static_len;
+
+        char *file_path = (char *)malloc(file_path_len);
+        if (!file_path) return NULL;
+
+        strcpy(file_path, path_to_static);
+        strcat(file_path, path + sizeof "/static" - 1);
+
+        return file_path;
 }
 
 
@@ -81,13 +97,15 @@ void HttpServer::ProcessGetRequest(HttpSession *session)
     } else if (LOCATION_CONTAINS("/../")) {
         Respond(session->GetFd(), session->RespondBadRequest());
     } else if (LOCATION_STARTS_WITH("/static/")) {
-        char *file_path = path + sizeof "/static/" - 1;
+        char *file_path = AddPathToStaticPrefix(path);
 
         if (file_exists(file_path)) {
             Respond(session->GetFd(), session->RespondFile(file_path));
         } else {
             Respond(session->GetFd(), session->RespondNotFound());
         }
+
+        free(file_path);
     } else {
         Respond(session->GetFd(), session->RespondNotFound());
     }
@@ -159,7 +177,9 @@ void HttpServer::Init()
 
 HttpServer::HttpServer()
     : n_sessions(0),
-    sessions(0)
+    sessions(0),
+    path_to_static(0),
+    path_to_static_len(0)
 {
 }
 
@@ -167,8 +187,12 @@ HttpServer::HttpServer()
 HttpServer::HttpServer(const Config &cfg)
     : TcpServer(cfg),
     n_sessions(0),
-    sessions(0)
+    sessions(0),
+    path_to_static_len(0)
 {
+    path_to_static = strdup(cfg.path_to_static);
+    assert(path_to_static);
+    path_to_static_len = strlen(path_to_static);
 }
 
 
@@ -181,5 +205,7 @@ HttpServer::~HttpServer()
 
         delete[] sessions;
     }
+
+    if (path_to_static) free(path_to_static);
 }
 

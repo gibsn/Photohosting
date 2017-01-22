@@ -16,6 +16,9 @@ class HttpServer: public TcpServer {
     int n_sessions;
     HttpSession **sessions;
 
+    char *path_to_static;
+    int path_to_static_len; // not to use strlen every time
+
     void Respond(int, HttpResponse *);
 
     HttpSession *GetSessionByFd(int);
@@ -23,6 +26,8 @@ class HttpServer: public TcpServer {
     virtual void CloseSession(int);
     virtual int CreateNewSession();
     virtual bool ProcessRequest(int);
+
+    char *AddPathToStaticPrefix(char *);
 
     void ProcessGetRequest(HttpSession *);
     void ProcessPostRequest(HttpSession *);

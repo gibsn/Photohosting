@@ -5,7 +5,6 @@
 #include "http_response.h"
 
 
-
 class HttpSession {
     int fd;
 

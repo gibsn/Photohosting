@@ -8,9 +8,10 @@
 struct Config
 {
     int port;
-    char* addr;
+    char *addr;
     int n_workers;
     int max_log_level;
+    char *path_to_static;
 
     Config();
     ~Config();

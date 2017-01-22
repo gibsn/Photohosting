@@ -6,10 +6,9 @@
 
 /*TODO:
   move select to another module
-  chdir to path from cfg
   add cfg
   fix diag msg when fork exits
-  linux doesnt have strnstr, wont compile
+  implement 304 not modified
 */
 
 int main(int argc, char **argv)

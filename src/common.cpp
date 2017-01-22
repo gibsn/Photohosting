@@ -16,13 +16,15 @@ Config::Config()
     : port(0),
     addr(0),
     n_workers(0),
-    max_log_level(-1)
+    max_log_level(-1),
+    path_to_static(0)
 {}
 
 
 Config::~Config()
 {
     if (addr) free(addr);
+    if (path_to_static) free(path_to_static);
 }
 
 
@@ -55,6 +57,13 @@ void Config::Check()
             "using INFO by default\n");
         max_log_level = LOG_INFO;
     }
+
+    if (!path_to_static) {
+        fprintf (stderr,
+            "You have not specified path to the static files, "
+            "using the current directory by default\n");
+        path_to_static = strdup(".");
+    }
 }
 
 
@@ -67,6 +76,7 @@ void print_help()
         "  -p [int]: port to listen on\n"
         "  -n [int]: amount of workers\n"
         "  -l [0-7]: level of logging\n"
+        "  -s [string]: path to static files\n"
     );
 }
 
@@ -80,8 +90,8 @@ bool process_cmd_arguments(int argc, char **argv, Config &cfg)
 
     int c;
 
-    //fix strtol bug
-    while ((c = getopt(argc, argv, "hi:p:n:l:")) != -1) {
+    //TODO: fix strtol bug
+    while ((c = getopt(argc, argv, "hi:p:n:l:s:")) != -1) {
         switch(c) {
         case 'i':
             cfg.addr = strdup(optarg);
@@ -109,6 +119,14 @@ bool process_cmd_arguments(int argc, char **argv, Config &cfg)
             cfg.max_log_level = strtol(optarg, (char**)NULL, 10);
             if (!cfg.max_log_level ) {
                 fprintf(stderr, "Wrong log level (%s), must be [0-7]\n",
+                    optarg);
+                return false;
+            }
+            break;
+        case 's':
+            cfg.path_to_static = strdup(optarg);
+            if (!cfg.path_to_static) {
+                fprintf(stderr, "Wrong path to static files (%s), must be string\n",
                     optarg);
                 return false;
             }
