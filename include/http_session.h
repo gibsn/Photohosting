@@ -18,8 +18,12 @@ public:
     HttpSession(int);
     ~HttpSession();
 
+    //1XX
+    HttpResponse *RespondContinue();
+
     //2XX
     HttpResponse *RespondOk();
+    HttpResponse *RespondCreated();
     HttpResponse *RespondFile(const char *);
 
     //3XX

@@ -48,11 +48,45 @@ HttpSession::~HttpSession()
 }while(0);
 
 
+HttpResponse *HttpSession::RespondContinue()
+{
+    ESSENTIALS();
+
+    response->code = http_continue;
+
+    response->body_len = 0;
+    response->body = NULL;
+
+    response->AddDefaultHeaders();
+
+    FINISH_RESPONSE();
+
+    return response;
+}
+
+
 HttpResponse *HttpSession::RespondOk()
 {
     ESSENTIALS();
 
     response->code = http_ok;
+
+    response->body_len = 0;
+    response->body = NULL;
+
+    response->AddDefaultHeaders();
+
+    FINISH_RESPONSE();
+
+    return response;
+}
+
+
+HttpResponse *HttpSession::RespondCreated()
+{
+    ESSENTIALS();
+
+    response->code = http_created;
 
     response->body_len = 0;
     response->body = NULL;

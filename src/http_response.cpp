@@ -74,8 +74,14 @@ void HttpResponse::AddStatusLine()
     const char *s_code;
 
     switch(code) {
+    case http_continue:
+        s_code = "100 CONTINUE";
+        break;
     case http_ok:
         s_code = "200 OK";
+        break;
+    case http_created:
+        s_code = "201 CREATED";
         break;
     case http_permanent_redirect:
         s_code = "308 PERMANENT REDIRECT";
