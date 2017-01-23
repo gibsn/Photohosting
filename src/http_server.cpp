@@ -120,7 +120,7 @@ void HttpServer::ProcessGetRequest(HttpSession *session)
 
 void HttpServer::ProcessPostRequest(HttpSession *session)
 {
-    Respond(session->GetFd(), session->RespondNotImplemented());
+    Respond(session->GetFd(), session->RespondContinue());
 }
 
 
