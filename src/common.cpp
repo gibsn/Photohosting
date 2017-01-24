@@ -67,6 +67,14 @@ void Config::Check()
 }
 
 
+ByteArray::ByteArray(char *_data, int _size)
+    : data(NULL),
+    size(_size)
+{
+    if (_data) data = strndup(_data, _size);
+}
+
+
 void print_help()
 {
     fprintf(stderr,
@@ -172,7 +180,10 @@ ByteArray *read_file(const char *path)
         return NULL;
     }
 
-    return new ByteArray(buf, file_stat.st_size);
+    ByteArray *file = new ByteArray(NULL, file_stat.st_size);
+    file->data = buf;
+
+    return file;
 }
 
 

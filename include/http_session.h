@@ -3,46 +3,42 @@
 
 #include "http_request.h"
 #include "http_response.h"
+#include "http_server.h"
+#include "tcp_session.h"
 
 
-class HttpSession {
-    int fd;
+class HttpSession: public TcpSessionDriver
+{
+    HttpServer *http_server;
+
+    bool active;
+    TcpSession *tcp_session;
 
     HttpRequest *request;
     HttpResponse *response;
 
     bool keep_alive;
 
-public:
-    HttpSession();
-    HttpSession(int);
-    ~HttpSession();
-
-    //1XX
-    HttpResponse *RespondContinue();
-
-    //2XX
-    HttpResponse *RespondOk();
-    HttpResponse *RespondCreated();
-    HttpResponse *RespondFile(const char *);
-
-    //3XX
-    HttpResponse *RespondPermanentRedirect(const char *);
-
-    //4XX
-    HttpResponse *RespondBadRequest();
-    HttpResponse *RespondNotFound();
-
-    //5XX
-    HttpResponse *RespondInternalError();
-    HttpResponse *RespondNotImplemented();
-
+    // TODO: this function should return more than bool
     bool ParseHttpRequest(char *);
     void ProcessHeaders();
     void PrepareForNextRequest();
 
+    bool ValidateLocation(char *);
+
+    void ProcessGetRequest();
+    void ProcessPostRequest();
+
+    void Respond(http_status_t);
+
+public:
+    HttpSession(TcpSession *, HttpServer *);
+    ~HttpSession();
+
+    virtual bool ProcessRequest();
+    virtual void Close();
+
     const HttpRequest *GetRequest() const { return request; }
-    int GetFd() const { return fd; }
     const bool GetKeepAlive() const { return keep_alive; }
 
     void SetKeepAlive(bool b) { keep_alive = b; }

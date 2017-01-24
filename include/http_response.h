@@ -2,9 +2,7 @@
 #define HTTP_RESPONSE_H_SENTRY
 
 
-#include <sys/types.h>
-
-#include "picohttpparser.h"
+#include "common.h"
 
 
 typedef enum {
@@ -31,14 +29,12 @@ struct HttpResponse {
     char *body;
     int body_len;
 
-    HttpResponse();
-    ~HttpResponse();
+    bool finalised;
+
 
     void AddStatusLine();
 
     void AddHeader(const char *, const char *);
-
-    void AddDefaultHeaders();
 
     //General headers
     void AddDateHeader();
@@ -51,6 +47,16 @@ struct HttpResponse {
     void CloseHeaders();
 
     void AddBody();
+
+public:
+    HttpResponse();
+    HttpResponse(http_status_t, ByteArray *, int, bool);
+    ~HttpResponse();
+
+    ByteArray *GetResponseByteArray();
+    ByteArray *GetResponseByteArray(http_status_t);
+
+    void SetBody(ByteArray *);
 };
 
 

@@ -6,21 +6,16 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "picohttpparser.h"
+
 #include "common.h"
 #include "log.h"
 
 
-HttpSession::HttpSession()
-    : fd(0),
-    request(NULL),
-    response(NULL),
-    keep_alive(true)
-{
-}
-
-
-HttpSession::HttpSession(int _fd)
-    : fd(_fd),
+HttpSession::HttpSession(TcpSession *_tcp_session, HttpServer *_http_server)
+    : http_server(_http_server),
+    active(true),
+    tcp_session(_tcp_session),
     request(NULL),
     response(NULL),
     keep_alive(true)
@@ -30,192 +25,126 @@ HttpSession::HttpSession(int _fd)
 
 HttpSession::~HttpSession()
 {
+    if (active) this->Close();
+
     if (request) delete request;
     if (response) delete response;
 }
 
-#define ESSENTIALS() do {                             \
-    response->minor_version = request->minor_version; \
-    response->keep_alive = keep_alive;                \
-} while(0);
 
-#define FINISH_RESPONSE() do {                                           \
-    response->CloseHeaders();                                            \
-    response->AddBody();                                                 \
-    response->response =                                                 \
-        (char *)realloc(response->response, response->response_len + 1); \
-    response->response[response->response_len] = '\0';                   \
-}while(0);
-
-
-HttpResponse *HttpSession::RespondContinue()
+void HttpSession::Close()
 {
-    ESSENTIALS();
-
-    response->code = http_continue;
-
-    response->body_len = 0;
-    response->body = NULL;
-
-    response->AddDefaultHeaders();
-
-    FINISH_RESPONSE();
-
-    return response;
+    LOG_I("Closing Http-session");
+    active = false;
 }
 
 
-HttpResponse *HttpSession::RespondOk()
+bool HttpSession::ValidateLocation(char *path)
 {
-    ESSENTIALS();
+    bool ret = false;
 
-    response->code = http_ok;
+    if (strstr(path, "/../")) goto fin;
 
-    response->body_len = 0;
-    response->body = NULL;
+    ret = true;
 
-    response->AddDefaultHeaders();
-
-    FINISH_RESPONSE();
-
-    return response;
+fin:
+    free(path);
+    return ret;
 }
 
 
-HttpResponse *HttpSession::RespondCreated()
+#define METHOD_IS(str)\
+    request->method_len == strlen(str) && \
+    !strncmp(request->method, str, request->method_len)
+
+bool HttpSession::ProcessRequest()
 {
-    ESSENTIALS();
+    bool ret = true;
 
-    response->code = http_created;
+    char *read_buf = tcp_session->GetReadBuf();
+    tcp_session->TruncateReadBuf();
+    // hexdump((uint8_t *)read_buf, strlen(read_buf));
+    if (!ParseHttpRequest(read_buf)) {
+        ret = false;
+        goto fin;
+    }
 
-    response->body_len = 0;
-    response->body = NULL;
+    response = new HttpResponse(http_ok, NULL, request->minor_version, keep_alive);
 
-    response->AddDefaultHeaders();
+    LOG_D("Processing HTTP-request");
 
-    FINISH_RESPONSE();
+    if (!ValidateLocation(strndup(request->path, request->path_len))) {
+        Respond(http_bad_request);
+    } else if (METHOD_IS("GET")) {
+        ProcessGetRequest();
+    } else if (METHOD_IS("POST")) {
+        ProcessPostRequest();
+    } else {
+        Respond(http_not_found);
+    }
 
-    return response;
+    if (!keep_alive) tcp_session->SetWantToClose(true);
+
+fin:
+    PrepareForNextRequest();
+    free(read_buf);
+    return ret;
+}
+
+#undef LOCATION_CONTAINS
+#undef METHOD_IS
+
+
+#define LOCATION_IS(str) !strcmp(path, str)
+#define LOCATION_STARTS_WITH(str) path == strstr(path, str)
+
+void HttpSession::ProcessGetRequest()
+{
+    char *path = strndup(request->path, request->path_len);
+
+    if (LOCATION_IS("/")) {
+        Respond(http_ok);
+    } else if (LOCATION_STARTS_WITH("/static/")) {
+        ByteArray *file = http_server->GetFileByLocation(path);
+
+        if (file) {
+            response->SetBody(file);
+            Respond(http_ok);
+        } else {
+            Respond(http_not_found);
+        }
+
+        free(file);
+    } else {
+        Respond(http_not_found);
+    }
+
+    free(path);
 }
 
 
-HttpResponse *HttpSession::RespondFile(const char *path)
+void HttpSession::ProcessPostRequest()
 {
-    ByteArray *file = read_file(path);
-    if (!file) return this->RespondInternalError();
-
-    ESSENTIALS();
-
-    response->code = http_ok;
-
-    response->body_len = file->size;
-    response->body = (char *)malloc(file->size);
-    memcpy(response->body, file->data, file->size);
-
-    delete(file);
-
-    response->AddDefaultHeaders();
-
-    FINISH_RESPONSE();
-
-    return response;
+    Respond(http_continue);
 }
 
+#undef LOCATION_IS
+#undef LOCATION_STARTS_WITH
 
-HttpResponse *HttpSession::RespondPermanentRedirect(const char *location)
+
+void HttpSession::Respond(http_status_t code)
 {
-    ESSENTIALS();
+    ByteArray *r = response->GetResponseByteArray(code);
+    tcp_session->Send(r);
 
-    response->code = http_permanent_redirect;
-
-
-    response->body_len = 0;
-    response->body = NULL;
-
-    response->AddDefaultHeaders();
-
-    response->AddHeader("Location", location);
-
-    FINISH_RESPONSE();
-
-    return response;
+    delete r;
 }
-
-
-HttpResponse *HttpSession::RespondBadRequest()
-{
-    ESSENTIALS();
-
-    response->code = http_bad_request;
-
-    response->body_len = 0;
-    response->body = NULL;
-
-    response->AddDefaultHeaders();
-
-    FINISH_RESPONSE();
-
-    return response;
-}
-
-
-HttpResponse *HttpSession::RespondNotFound()
-{
-    ESSENTIALS();
-
-    response->code = http_not_found;
-
-    response->body_len = 0;
-    response->body = NULL;
-
-    response->AddDefaultHeaders();
-
-    FINISH_RESPONSE();
-
-    return response;
-}
-
-
-HttpResponse *HttpSession::RespondInternalError()
-{
-    ESSENTIALS();
-
-    response->code = http_internal_error;
-
-    response->body_len = 0;
-    response->body = NULL;
-
-    response->AddDefaultHeaders();
-
-    FINISH_RESPONSE();
-
-    return response;
-}
-
-
-HttpResponse *HttpSession::RespondNotImplemented()
-{
-    ESSENTIALS();
-
-    response->code = http_not_implemented;
-
-    response->body_len = 0;
-    response->body = NULL;
-
-    FINISH_RESPONSE();
-
-    return response;
-}
-
-#undef ESSENTIALS
-#undef FINISH_RESPONSE
 
 
 bool HttpSession::ParseHttpRequest(char *req)
 {
     int req_len = strlen(req);
     request = new HttpRequest;
-    response = new HttpResponse;
 
     int res = phr_parse_request(req,
                                 req_len,
@@ -244,10 +173,10 @@ bool HttpSession::ParseHttpRequest(char *req)
 }
 
 
-void HttpSession::ProcessHeaders()
-{
 #define CMP_HEADER(str) !memcmp(headers[i].name, str, headers[i].name_len)
 
+void HttpSession::ProcessHeaders()
+{
     struct phr_header *headers = request->headers;
     for (int i = 0; i < request->n_headers; ++i) {
         if (CMP_HEADER("Connection")) {
@@ -258,9 +187,9 @@ void HttpSession::ProcessHeaders()
             request->body_len = strtol(headers[i].value, NULL, 10);
         }
     }
+}
 
 #undef CMP_HEADER
-}
 
 
 void HttpSession::PrepareForNextRequest()

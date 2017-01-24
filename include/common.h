@@ -26,7 +26,7 @@ struct ByteArray
     int size;
 
     ByteArray() : data(NULL), size(0) {};
-    ByteArray(char * _data, int _size) : data(_data), size(_size) {};
+    ByteArray(char *, int);
     ~ByteArray() { if (data) free(data); }
 };
 

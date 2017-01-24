@@ -1,44 +1,33 @@
 #ifndef HTTP_SERVER_H_SENTRY
 #define HTTP_SERVER_H_SENTRY
 
-#include <sys/types.h>
 
-#include "picohttpparser.h"
-
-#include "http_session.h"
+#include "common.h"
 #include "tcp_server.h"
+#include "tcp_session.h"
 
 
 struct Config;
 
 
 class HttpServer: public TcpServer {
-    int n_sessions;
-    HttpSession **sessions;
 
     char *path_to_static;
     int path_to_static_len; // not to use strlen every time
 
-    void Respond(int, HttpResponse *);
+    virtual TcpSession *CreateNewSession();
 
-    HttpSession *GetSessionByFd(int);
+    char *AddPathToStaticPrefix(const char *) const;
 
-    virtual void CloseSession(int);
-    virtual int CreateNewSession();
-    virtual bool ProcessRequest(int);
-
-    char *AddPathToStaticPrefix(char *);
-
-    void ProcessGetRequest(HttpSession *);
-    void ProcessPostRequest(HttpSession *);
+    void ProcessGetRequest();
+    void ProcessPostRequest();
 
 public:
     HttpServer();
     HttpServer(const Config &);
     virtual ~HttpServer();
 
-    virtual void Init();
-    virtual void ListenAndServe();
+    ByteArray *GetFileByLocation(const char *);
 };
 
 
