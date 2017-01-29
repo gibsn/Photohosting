@@ -114,7 +114,7 @@ void HttpSession::ProcessGetRequest()
             Respond(http_not_found);
         }
 
-        free(file);
+        delete file;
     } else {
         Respond(http_not_found);
     }

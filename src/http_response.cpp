@@ -1,6 +1,7 @@
 #include "http_response.h"
 
 #include <assert.h>
+#include "common.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -22,8 +23,9 @@ HttpResponse::HttpResponse(
     body_len(0),
     finalised(false)
 {
-    if (body) {
-        body = strndup(_body->data, _body->size);
+    if (_body) {
+        body = (char *)malloc(_body->size);
+        memcpy(body, _body->data, _body->size);
         body_len = _body->size;
     }
 }
@@ -72,7 +74,8 @@ ByteArray *HttpResponse::GetResponseByteArray()
 void HttpResponse::SetBody(ByteArray *_body)
 {
     if (_body) {
-        body = strndup(_body->data, _body->size);
+        body = (char *)malloc(_body->size);
+        memcpy(body, _body->data, _body->size);
         body_len = _body->size;
     }
 }
@@ -180,9 +183,10 @@ void HttpResponse::CloseHeaders()
 
 void HttpResponse::AddBody()
 {
-   if (body_len) {
-       response = (char *)realloc(response, response_len + body_len);
-       memcpy(response + response_len, body, body_len);
-       response_len += body_len;
+    if (body_len) {
+        response = (char *)realloc(response, response_len + body_len);
+
+        memcpy(response + response_len, body, body_len);
+        response_len += body_len;
     }
 }

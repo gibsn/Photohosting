@@ -71,7 +71,10 @@ ByteArray::ByteArray(char *_data, int _size)
     : data(NULL),
     size(_size)
 {
-    if (_data) data = strndup(_data, _size);
+    if (_data) {
+        data = (char *)malloc(_size);
+        memcpy(data, _data, _size);
+    }
 }
 
 

@@ -18,16 +18,16 @@
 
 char *HttpServer::AddPathToStaticPrefix(const char *path) const
 {
-        int file_path_len = strlen(path) - sizeof "/static";
-        file_path_len += path_to_static_len;
+    int file_path_len = strlen(path) - (sizeof "/static" - 1) + 1;
+    file_path_len += path_to_static_len;
 
-        char *file_path = (char *)malloc(file_path_len);
-        if (!file_path) return NULL;
+    char *file_path = (char *)malloc(file_path_len);
+    if (!file_path) return NULL;
 
-        strcpy(file_path, path_to_static);
-        strcat(file_path, path + sizeof "/static" - 1);
+    strcpy(file_path, path_to_static);
+    strcat(file_path, path + sizeof "/static" - 1);
 
-        return file_path;
+    return file_path;
 }
 
 

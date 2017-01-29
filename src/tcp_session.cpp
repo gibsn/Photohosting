@@ -136,7 +136,8 @@ char *TcpSession::GetReadBuf() const
 void TcpSession::Send(ByteArray *buf)
 {
     write_buf_len = buf->size;
-    write_buf = strndup(buf->data, buf->size);
+    write_buf = (char *)malloc(buf->size);
+    memcpy(write_buf, buf->data, buf->size);
     select_driver->SetWantToWrite(fd);
 }
 
