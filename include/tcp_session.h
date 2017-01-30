@@ -52,7 +52,7 @@ public:
 
     int GetFd() const { return fd; }
     const char *GetSAddr() const { return s_addr; }
-    char *GetReadBuf() const;
+    ByteArray *GetReadBuf() const;
     bool GetWantToClose() const { return want_to_close; }
 
     void Send(ByteArray *);

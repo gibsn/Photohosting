@@ -20,7 +20,7 @@ class HttpSession: public TcpSessionDriver
     bool keep_alive;
 
     // TODO: this function should return more than bool
-    bool ParseHttpRequest(char *);
+    bool ParseHttpRequest(ByteArray *);
     void ProcessHeaders();
     void PrepareForNextRequest();
 

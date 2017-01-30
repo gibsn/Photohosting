@@ -123,13 +123,9 @@ bool TcpSession::Flush()
 
 
 // TODO: use bytearray here
-char *TcpSession::GetReadBuf() const
+ByteArray *TcpSession::GetReadBuf() const
 {
-    char *buf = (char *)malloc(read_buf_len + 1);
-    memcpy(buf, read_buf, read_buf_len);
-    buf[read_buf_len] = '\0';
-
-    return buf;
+    return new ByteArray((char *)read_buf, read_buf_len);
 }
 
 

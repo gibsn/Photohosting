@@ -61,7 +61,7 @@ bool HttpSession::ProcessRequest()
 {
     bool ret = true;
 
-    char *read_buf = tcp_session->GetReadBuf();
+    ByteArray *read_buf = tcp_session->GetReadBuf();
     tcp_session->TruncateReadBuf();
     // hexdump((uint8_t *)read_buf, strlen(read_buf));
     if (!ParseHttpRequest(read_buf)) {
@@ -87,7 +87,8 @@ bool HttpSession::ProcessRequest()
 
 fin:
     PrepareForNextRequest();
-    free(read_buf);
+    // delete read_buf;
+
     return ret;
 }
 
@@ -141,13 +142,12 @@ void HttpSession::Respond(http_status_t code)
 }
 
 
-bool HttpSession::ParseHttpRequest(char *req)
+bool HttpSession::ParseHttpRequest(ByteArray *req)
 {
-    int req_len = strlen(req);
     request = new HttpRequest;
 
-    int res = phr_parse_request(req,
-                                req_len,
+    int res = phr_parse_request(req->data,
+                                req->size,
                                 (const char**)&request->method,
                                 &request->method_len,
                                 (const char **)&request->path,
@@ -165,8 +165,7 @@ bool HttpSession::ParseHttpRequest(char *req)
         return false;
     }
 
-    //strdup here?
-    request->body = req + res;
+    //TODO: process body?
     ProcessHeaders();
 
     return true;
