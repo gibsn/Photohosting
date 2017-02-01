@@ -14,6 +14,7 @@
 
 HttpSession::HttpSession(TcpSession *_tcp_session, HttpServer *_http_server)
     : http_server(_http_server),
+    read_buf(NULL),
     active(true),
     tcp_session(_tcp_session),
     request(NULL),
@@ -26,6 +27,8 @@ HttpSession::HttpSession(TcpSession *_tcp_session, HttpServer *_http_server)
 HttpSession::~HttpSession()
 {
     if (active) this->Close();
+
+    if (read_buf) delete read_buf;
 
     if (request) delete request;
     if (response) delete response;
@@ -61,12 +64,25 @@ bool HttpSession::ProcessRequest()
 {
     bool ret = true;
 
-    ByteArray *read_buf = tcp_session->GetReadBuf();
+    ByteArray *tcp_read_buf = tcp_session->GetReadBuf();
     tcp_session->TruncateReadBuf();
-    // hexdump((uint8_t *)read_buf, strlen(read_buf));
-    if (!ParseHttpRequest(read_buf)) {
+
+    if (!read_buf) read_buf = new ByteArray;
+    //TODO: guess I can allocate Content-Length just once
+    read_buf->Append(tcp_read_buf);
+
+    // hexdump((uint8_t *)tcp_read_buf->data, tcp_read_buf->size);
+    // hexdump((uint8_t *)read_buf->data, read_buf->size);
+    switch(ParseHttpRequest(read_buf)) {
+    case ok:
+        break;
+    case incomplete_request:
+        goto fin;
+        break;
+    case invalid_request:
         ret = false;
         goto fin;
+        break;
     }
 
     response = new HttpResponse(http_ok, NULL, request->minor_version, keep_alive);
@@ -84,10 +100,10 @@ bool HttpSession::ProcessRequest()
     }
 
     if (!keep_alive) tcp_session->SetWantToClose(true);
+    PrepareForNextRequest();
 
 fin:
-    PrepareForNextRequest();
-    // delete read_buf;
+    delete tcp_read_buf;
 
     return ret;
 }
@@ -126,7 +142,6 @@ void HttpSession::ProcessGetRequest()
 
 void HttpSession::ProcessPostRequest()
 {
-    Respond(http_continue);
 }
 
 #undef LOCATION_IS
@@ -142,10 +157,11 @@ void HttpSession::Respond(http_status_t code)
 }
 
 
-bool HttpSession::ParseHttpRequest(ByteArray *req)
+request_parser_result_t HttpSession::ParseHttpRequest(ByteArray *req)
 {
     request = new HttpRequest;
 
+    //TODO: I dont need to parse same headers every time
     int res = phr_parse_request(req->data,
                                 req->size,
                                 (const char**)&request->method,
@@ -158,17 +174,26 @@ bool HttpSession::ParseHttpRequest(ByteArray *req)
                                 0);
 
     if (res == -1) {
-        LOG_E("Failed to parse HTTP-Request");
-        return false;
+        LOG_W("Got an incomplete HTTP-Request")
+        return incomplete_request;
     } else if (res == -2) {
-        LOG_W("Got an incomplete HTTP-Request, dropping connection")
-        return false;
+        LOG_E("Failed to parse HTTP-Request");
+        return invalid_request;
     }
 
-    //TODO: process body?
+    request->headers_len = res;
     ProcessHeaders();
 
-    return true;
+    int body_bytes_pending = request->body_len - (req->size - res);
+    if (body_bytes_pending) {
+        LOG_D("Missing %d body bytes, waiting", body_bytes_pending);
+        return incomplete_request;
+    }
+
+    request->body = (char *)malloc(request->body_len);
+    memcpy(request->body, req->data + request->headers_len, req->size);
+
+    return ok;
 }
 
 
@@ -178,6 +203,10 @@ void HttpSession::ProcessHeaders()
 {
     struct phr_header *headers = request->headers;
     for (int i = 0; i < request->n_headers; ++i) {
+        LOG_D("%.*s: %.*s",
+                int(headers[i].name_len), headers[i].name,
+                int(headers[i].value_len), headers[i].value);
+
         if (CMP_HEADER("Connection")) {
             keep_alive =
                 headers[i].value_len > 0 &&
@@ -201,5 +230,10 @@ void HttpSession::PrepareForNextRequest()
     if (request) {
         delete request;
         request = NULL;
+    }
+
+    if (read_buf) {
+        delete read_buf;
+        read_buf = NULL;
     }
 }

@@ -78,6 +78,16 @@ ByteArray::ByteArray(char *_data, int _size)
 }
 
 
+void ByteArray::Append(const ByteArray *arr)
+{
+    if (arr && arr->data) {
+        data = (char *)realloc(data, size + arr->size);
+        memcpy(data + size, arr->data, arr->size);
+        size += arr->size;
+    }
+}
+
+
 void print_help()
 {
     fprintf(stderr,

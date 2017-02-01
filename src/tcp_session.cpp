@@ -122,7 +122,6 @@ bool TcpSession::Flush()
 }
 
 
-// TODO: use bytearray here
 ByteArray *TcpSession::GetReadBuf() const
 {
     return new ByteArray((char *)read_buf, read_buf_len);

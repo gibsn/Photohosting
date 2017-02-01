@@ -7,9 +7,18 @@
 #include "tcp_session.h"
 
 
+typedef enum {
+    ok = 0,
+    incomplete_request = -1,
+    invalid_request = -2
+} request_parser_result_t;
+
+
 class HttpSession: public TcpSessionDriver
 {
     HttpServer *http_server;
+
+    ByteArray *read_buf;
 
     bool active;
     TcpSession *tcp_session;
@@ -19,8 +28,7 @@ class HttpSession: public TcpSessionDriver
 
     bool keep_alive;
 
-    // TODO: this function should return more than bool
-    bool ParseHttpRequest(ByteArray *);
+    request_parser_result_t ParseHttpRequest(ByteArray *);
     void ProcessHeaders();
     void PrepareForNextRequest();
 
