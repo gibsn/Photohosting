@@ -67,7 +67,7 @@ void Config::Check()
 }
 
 
-ByteArray::ByteArray(char *_data, int _size)
+ByteArray::ByteArray(const char *_data, int _size)
     : data(NULL),
     size(_size)
 {

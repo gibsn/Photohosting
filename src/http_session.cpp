@@ -10,6 +10,7 @@
 
 #include "common.h"
 #include "log.h"
+#include "multipart.h"
 
 
 HttpSession::HttpSession(TcpSession *_tcp_session, HttpServer *_http_server)
@@ -71,7 +72,6 @@ bool HttpSession::ProcessRequest()
     //TODO: guess I can allocate Content-Length just once
     read_buf->Append(tcp_read_buf);
 
-    // hexdump((uint8_t *)tcp_read_buf->data, tcp_read_buf->size);
     // hexdump((uint8_t *)read_buf->data, read_buf->size);
     switch(ParseHttpRequest(read_buf)) {
     case ok:
@@ -115,6 +115,21 @@ fin:
 #define LOCATION_IS(str) !strcmp(path, str)
 #define LOCATION_STARTS_WITH(str) path == strstr(path, str)
 
+void HttpSession::RespondStatic(const char *path)
+{
+    ByteArray *file = http_server->GetFileByLocation(path);
+
+    if (!file) {
+        Respond(http_not_found);
+        return;
+    }
+
+    response->SetBody(file);
+    Respond(http_ok);
+    delete file;
+}
+
+
 void HttpSession::ProcessGetRequest()
 {
     char *path = strndup(request->path, request->path_len);
@@ -122,16 +137,7 @@ void HttpSession::ProcessGetRequest()
     if (LOCATION_IS("/")) {
         Respond(http_ok);
     } else if (LOCATION_STARTS_WITH("/static/")) {
-        ByteArray *file = http_server->GetFileByLocation(path);
-
-        if (file) {
-            response->SetBody(file);
-            Respond(http_ok);
-        } else {
-            Respond(http_not_found);
-        }
-
-        delete file;
+        RespondStatic(path);
     } else {
         Respond(http_not_found);
     }
@@ -140,12 +146,52 @@ void HttpSession::ProcessGetRequest()
 }
 
 
+void HttpSession::RespondUpload(const char *path)
+{
+    // TODO: filename here
+    ByteArray* file = GetFileFromRequest(path);
+    // TODO: not quite right
+    if (!file) {
+        Respond(http_bad_request);
+        return;
+    }
+    // http_server->SaveFile(file, name);
+
+    delete file;
+}
+
+
 void HttpSession::ProcessPostRequest()
 {
+    char *path = strndup(request->path, request->path_len);
+
+    if (LOCATION_STARTS_WITH("/upload/")) {
+        RespondUpload(path);
+    } else {
+        Respond(http_not_found);
+    }
+
+    free(path);
 }
 
 #undef LOCATION_IS
 #undef LOCATION_STARTS_WITH
+
+
+ByteArray *HttpSession::GetFileFromRequest(const char *req_path) const
+{
+    const char *boundary = request->GetMultipartBondary();
+    if (!boundary) return NULL;
+
+    MultipartParser parser(boundary);
+    parser.Execute(ByteArray(request->body, request->body_len));
+
+    ByteArray *body = parser.GetBody();
+
+    // hexdump((uint8_t*)body->data, body->size);
+
+    return NULL;
+}
 
 
 void HttpSession::Respond(http_status_t code)
@@ -191,7 +237,7 @@ request_parser_result_t HttpSession::ParseHttpRequest(ByteArray *req)
     }
 
     request->body = (char *)malloc(request->body_len);
-    memcpy(request->body, req->data + request->headers_len, req->size);
+    memcpy(request->body, req->data + request->headers_len, request->body_len);
 
     return ok;
 }

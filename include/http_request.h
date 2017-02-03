@@ -26,6 +26,8 @@ struct HttpRequest {
 
     HttpRequest();
     ~HttpRequest();
+
+    char *GetMultipartBondary() const;
 };
 
 
