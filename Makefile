@@ -15,13 +15,13 @@ SRC_MODULES = $(wildcard $(SRC_DIR)/*.cpp)
 OBJ_MODULES = $(addprefix $(OBJ_DIR)/, $(notdir $(SRC_MODULES:.cpp=.o)))
 DEPS_MODULES = $(addprefix $(DEPS_DIR)/, $(notdir $(SRC_MODULES:.cpp=.d)))
 
-BRIDGE_TARGETS = picohttpparser WebAlbumCreator
+BRIDGE_TARGETS = picohttpparser WebAlbumCreator multipart_parser
 
 CXXFLAGS += -I$(INCLUDE_DIR)
 CXXFLAGS += -I$(BRIDGE_DIR)/include
 
 LDFLAGS = -L $(BRIDGE_DIR)/lib/
-LDFLAGS += -l wac -l pico
+LDFLAGS += -l wac -l pico -l multipart
 
 src_to_obj = $(addprefix $(OBJ_DIR)/, $(notdir $(1:.cpp=.o)))
 

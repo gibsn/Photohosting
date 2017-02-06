@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/types.h>
 
+#include "select_loop.h"
 #include "tcp_session.h"
 
 #define MAX_SESSIONS 1024
@@ -27,7 +28,7 @@ struct Worker {
 };
 
 
-class TcpServer {
+class TcpServer: public SelectLoopDriver {
     char *addr;
     int port;
 
@@ -46,17 +47,15 @@ class TcpServer {
     void Serve();
     void Wait();
 
-    void AddNewClient(int, char *);
-    TcpSession *GetSessionByFd(int);
-
-    virtual bool ProcessRequest(int);
+    virtual void CloseSession(TcpSession *);
 
     void ProcessRead(const fd_set &, TcpSession *);
     void ProcessWrite(const fd_set &, TcpSession *);
 
+    void SetWantToWrite(int fd) { FD_SET(fd, &so.writefds); }
+
 protected:
-    virtual int CreateNewSession();
-    virtual void CloseSession(int);
+    virtual TcpSession *CreateNewSession();
 
 public:
     TcpServer();
@@ -70,10 +69,7 @@ public:
     void SetPort(int p) { port = p; }
     void SetWorkersCount(int n) { n_workers = n; }
 
-    void WantToCloseSession(int);
-
-    void WriteTo(int, char *, int);
-    char *ReadFrom(int);
+    void RequestWrite(int);
 
     virtual void Init();
     virtual void ListenAndServe();

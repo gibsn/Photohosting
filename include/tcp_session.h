@@ -4,9 +4,30 @@
 #define READ_BUF_SIZE 4096
 
 
+#include "common.h"
+#include "select_loop.h"
+
+
+// Interface for Applicative layer sessions
+class TcpSessionDriver
+{
+public:
+    virtual ~TcpSessionDriver() {};
+
+    virtual bool ProcessRequest() = 0;
+    virtual void Close() = 0;
+};
+
+
+class TcpServer;
+
 class TcpSession
 {
+    bool active;
     int fd;
+
+    SelectLoopDriver *select_driver;
+    TcpSessionDriver *session_driver;
 
     char read_buf[READ_BUF_SIZE];
     int read_buf_len;
@@ -20,19 +41,23 @@ class TcpSession
 
 public:
     TcpSession();
-    TcpSession(int, char *);
+    TcpSession(int, char *, SelectLoopDriver *);
     ~TcpSession();
 
-    bool Read();
-    bool Send();
+    bool ReadToBuf();
+    bool Flush();
+
+    bool ProcessRequest();
+    void Close();
 
     int GetFd() const { return fd; }
     const char *GetSAddr() const { return s_addr; }
-    char *GetReadBuf() const;
+    ByteArray *GetReadBuf() const;
     bool GetWantToClose() const { return want_to_close; }
 
-    void SetWriteBuf(char *, int);
+    void Send(ByteArray *);
     void SetWantToClose(bool b) { want_to_close = b; }
+    void SetSessionDriver(TcpSessionDriver *_sd) { session_driver = _sd; }
 
     void TruncateReadBuf();
 };

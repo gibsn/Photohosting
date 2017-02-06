@@ -17,7 +17,8 @@ Config::Config()
     addr(0),
     n_workers(0),
     max_log_level(-1),
-    path_to_static(0)
+    path_to_static(NULL),
+    path_to_tmp_files(NULL)
 {}
 
 
@@ -25,6 +26,7 @@ Config::~Config()
 {
     if (addr) free(addr);
     if (path_to_static) free(path_to_static);
+    if (path_to_tmp_files) free(path_to_tmp_files);
 }
 
 
@@ -63,6 +65,34 @@ void Config::Check()
             "You have not specified path to the static files, "
             "using the current directory by default\n");
         path_to_static = strdup(".");
+    }
+
+    if (!path_to_tmp_files) {
+        fprintf (stderr,
+            "You have not specified path to the tmp files, "
+            "using the current directory by default\n");
+        path_to_tmp_files = strdup(".");
+    }
+}
+
+
+ByteArray::ByteArray(const char *_data, int _size)
+    : data(NULL),
+    size(_size)
+{
+    if (_data) {
+        data = (char *)malloc(_size);
+        memcpy(data, _data, _size);
+    }
+}
+
+
+void ByteArray::Append(const ByteArray *arr)
+{
+    if (arr && arr->data) {
+        data = (char *)realloc(data, size + arr->size);
+        memcpy(data + size, arr->data, arr->size);
+        size += arr->size;
     }
 }
 
@@ -172,7 +202,10 @@ ByteArray *read_file(const char *path)
         return NULL;
     }
 
-    return new ByteArray(buf, file_stat.st_size);
+    ByteArray *file = new ByteArray(NULL, file_stat.st_size);
+    file->data = buf;
+
+    return file;
 }
 
 

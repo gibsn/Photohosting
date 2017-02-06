@@ -6,21 +6,18 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "picohttpparser.h"
+
 #include "common.h"
 #include "log.h"
+#include "multipart.h"
 
 
-HttpSession::HttpSession()
-    : fd(0),
-    request(NULL),
-    response(NULL),
-    keep_alive(true)
-{
-}
-
-
-HttpSession::HttpSession(int _fd)
-    : fd(_fd),
+HttpSession::HttpSession(TcpSession *_tcp_session, HttpServer *_http_server)
+    : http_server(_http_server),
+    read_buf(NULL),
+    active(true),
+    tcp_session(_tcp_session),
     request(NULL),
     response(NULL),
     keep_alive(true)
@@ -30,195 +27,203 @@ HttpSession::HttpSession(int _fd)
 
 HttpSession::~HttpSession()
 {
+    if (active) this->Close();
+
+    if (read_buf) delete read_buf;
+
     if (request) delete request;
     if (response) delete response;
 }
 
-#define ESSENTIALS() do {                             \
-    response->minor_version = request->minor_version; \
-    response->keep_alive = keep_alive;                \
-} while(0);
 
-#define FINISH_RESPONSE() do {                                           \
-    response->CloseHeaders();                                            \
-    response->AddBody();                                                 \
-    response->response =                                                 \
-        (char *)realloc(response->response, response->response_len + 1); \
-    response->response[response->response_len] = '\0';                   \
-}while(0);
-
-
-HttpResponse *HttpSession::RespondContinue()
+void HttpSession::Close()
 {
-    ESSENTIALS();
-
-    response->code = http_continue;
-
-    response->body_len = 0;
-    response->body = NULL;
-
-    response->AddDefaultHeaders();
-
-    FINISH_RESPONSE();
-
-    return response;
+    LOG_I("Closing Http-session");
+    active = false;
 }
 
 
-HttpResponse *HttpSession::RespondOk()
+bool HttpSession::ValidateLocation(char *path)
 {
-    ESSENTIALS();
+    bool ret = false;
 
-    response->code = http_ok;
+    if (strstr(path, "/../")) goto fin;
 
-    response->body_len = 0;
-    response->body = NULL;
+    ret = true;
 
-    response->AddDefaultHeaders();
-
-    FINISH_RESPONSE();
-
-    return response;
+fin:
+    free(path);
+    return ret;
 }
 
 
-HttpResponse *HttpSession::RespondCreated()
+#define METHOD_IS(str)\
+    request->method_len == strlen(str) && \
+    !strncmp(request->method, str, request->method_len)
+
+bool HttpSession::ProcessRequest()
 {
-    ESSENTIALS();
+    bool ret = true;
 
-    response->code = http_created;
+    ByteArray *tcp_read_buf = tcp_session->GetReadBuf();
+    tcp_session->TruncateReadBuf();
 
-    response->body_len = 0;
-    response->body = NULL;
+    if (!read_buf) read_buf = new ByteArray;
+    //TODO: guess I can allocate Content-Length just once
+    read_buf->Append(tcp_read_buf);
 
-    response->AddDefaultHeaders();
+    switch(ParseHttpRequest(read_buf)) {
+    case ok:
+        break;
+    case incomplete_request:
+        goto fin;
+        break;
+    case invalid_request:
+        ret = false;
+        goto fin;
+        break;
+    }
+    // hexdump((uint8_t *)read_buf->data, read_buf->size);
 
-    FINISH_RESPONSE();
+    response = new HttpResponse(http_ok, NULL, request->minor_version, keep_alive);
 
-    return response;
+    LOG_D("Processing HTTP-request");
+
+    if (!ValidateLocation(strndup(request->path, request->path_len))) {
+        Respond(http_bad_request);
+    } else if (METHOD_IS("GET")) {
+        ProcessGetRequest();
+    } else if (METHOD_IS("POST")) {
+        ProcessPostRequest();
+    } else {
+        Respond(http_not_found);
+    }
+
+    if (!keep_alive) tcp_session->SetWantToClose(true);
+    PrepareForNextRequest();
+
+fin:
+    delete tcp_read_buf;
+
+    return ret;
+}
+
+#undef LOCATION_CONTAINS
+#undef METHOD_IS
+
+
+#define LOCATION_IS(str) !strcmp(path, str)
+#define LOCATION_STARTS_WITH(str) path == strstr(path, str)
+
+void HttpSession::RespondStatic(const char *path)
+{
+    ByteArray *file = http_server->GetFileByLocation(path);
+
+    if (!file) {
+        Respond(http_not_found);
+        return;
+    }
+
+    response->SetBody(file);
+    Respond(http_ok);
+    delete file;
 }
 
 
-HttpResponse *HttpSession::RespondFile(const char *path)
+void HttpSession::ProcessGetRequest()
 {
-    ByteArray *file = read_file(path);
-    if (!file) return this->RespondInternalError();
+    char *path = strndup(request->path, request->path_len);
 
-    ESSENTIALS();
+    if (LOCATION_IS("/")) {
+        Respond(http_ok);
+    } else if (LOCATION_STARTS_WITH("/static/")) {
+        RespondStatic(path);
+    } else {
+        Respond(http_not_found);
+    }
 
-    response->code = http_ok;
-
-    response->body_len = file->size;
-    response->body = (char *)malloc(file->size);
-    memcpy(response->body, file->data, file->size);
-
-    delete(file);
-
-    response->AddDefaultHeaders();
-
-    FINISH_RESPONSE();
-
-    return response;
+    free(path);
 }
 
 
-HttpResponse *HttpSession::RespondPermanentRedirect(const char *location)
+void HttpSession::ProcessPostRequest()
 {
-    ESSENTIALS();
+    char *path = strndup(request->path, request->path_len);
 
-    response->code = http_permanent_redirect;
+    if (LOCATION_IS("/upload/photos")) {
+        char *file_path = UploadFile();
+    } else {
+        Respond(http_not_found);
+    }
+
+    free(path);
+}
+
+#undef LOCATION_IS
+#undef LOCATION_STARTS_WITH
 
 
-    response->body_len = 0;
-    response->body = NULL;
+char *HttpSession::UploadFile()
+{
+    char *name = NULL;
+    ByteArray* file = NULL;
+    char *saved_file_path = NULL;
 
-    response->AddDefaultHeaders();
+    file = GetFileFromRequest(&name);
+    // TODO: not quite right (can be more than one file)
 
-    response->AddHeader("Location", location);
+    if (!file) {
+        Respond(http_bad_request);
+        goto fin;
+    }
 
-    FINISH_RESPONSE();
+    saved_file_path = http_server->SaveFile(file, name);
 
-    return response;
+fin:
+    if (name) free(name);
+    if (file) delete file;
+
+    return saved_file_path;
 }
 
 
-HttpResponse *HttpSession::RespondBadRequest()
+ByteArray *HttpSession::GetFileFromRequest(char **name) const
 {
-    ESSENTIALS();
+    char *boundary = request->GetMultipartBondary();
+    if (!boundary) return NULL;
 
-    response->code = http_bad_request;
+    MultipartParser parser(boundary);
+    parser.Execute(ByteArray(request->body, request->body_len));
 
-    response->body_len = 0;
-    response->body = NULL;
+    ByteArray *body = parser.GetBody();
+    char *_name = parser.GetFilename();
 
-    response->AddDefaultHeaders();
+    *name = _name? strdup(_name): NULL;
 
-    FINISH_RESPONSE();
+    free(boundary);
 
-    return response;
+    return body;
 }
 
 
-HttpResponse *HttpSession::RespondNotFound()
+void HttpSession::Respond(http_status_t code)
 {
-    ESSENTIALS();
+    ByteArray *r = response->GetResponseByteArray(code);
+    tcp_session->Send(r);
 
-    response->code = http_not_found;
-
-    response->body_len = 0;
-    response->body = NULL;
-
-    response->AddDefaultHeaders();
-
-    FINISH_RESPONSE();
-
-    return response;
+    delete r;
 }
 
 
-HttpResponse *HttpSession::RespondInternalError()
+request_parser_result_t HttpSession::ParseHttpRequest(ByteArray *req)
 {
-    ESSENTIALS();
+    request_parser_result_t ret = ok;
+    int body_bytes_pending;
 
-    response->code = http_internal_error;
+    request = new HttpRequest();
 
-    response->body_len = 0;
-    response->body = NULL;
-
-    response->AddDefaultHeaders();
-
-    FINISH_RESPONSE();
-
-    return response;
-}
-
-
-HttpResponse *HttpSession::RespondNotImplemented()
-{
-    ESSENTIALS();
-
-    response->code = http_not_implemented;
-
-    response->body_len = 0;
-    response->body = NULL;
-
-    FINISH_RESPONSE();
-
-    return response;
-}
-
-#undef ESSENTIALS
-#undef FINISH_RESPONSE
-
-
-bool HttpSession::ParseHttpRequest(char *req)
-{
-    int req_len = strlen(req);
-    request = new HttpRequest;
-    response = new HttpResponse;
-
-    int res = phr_parse_request(req,
-                                req_len,
+    int res = phr_parse_request(req->data,
+                                req->size,
                                 (const char**)&request->method,
                                 &request->method_len,
                                 (const char **)&request->path,
@@ -229,27 +234,48 @@ bool HttpSession::ParseHttpRequest(char *req)
                                 0);
 
     if (res == -1) {
-        LOG_E("Failed to parse HTTP-Request");
-        return false;
+        LOG_W("Got an incomplete HTTP-Request")
+        ret = incomplete_request;
+        goto fin;
     } else if (res == -2) {
-        LOG_W("Got an incomplete HTTP-Request, dropping connection")
-        return false;
+        LOG_E("Failed to parse HTTP-Request");
+        ret = invalid_request;
+        goto fin;
     }
 
-    //strdup here?
-    request->body = req + res;
+    request->headers_len = res;
     ProcessHeaders();
 
-    return true;
+    body_bytes_pending = request->body_len - (req->size - res);
+    if (body_bytes_pending) {
+        LOG_D("Missing %d body bytes, waiting", body_bytes_pending);
+        ret = incomplete_request;
+        goto fin;
+    }
+
+    request->body = (char *)malloc(request->body_len);
+    memcpy(request->body, req->data + request->headers_len, request->body_len);
+
+fin:
+    if (ret != ok) {
+        delete request;
+        request = NULL;
+    }
+
+    return ret;
 }
 
 
-void HttpSession::ProcessHeaders()
-{
 #define CMP_HEADER(str) !memcmp(headers[i].name, str, headers[i].name_len)
 
+void HttpSession::ProcessHeaders()
+{
     struct phr_header *headers = request->headers;
     for (int i = 0; i < request->n_headers; ++i) {
+        LOG_D("%.*s: %.*s",
+                int(headers[i].name_len), headers[i].name,
+                int(headers[i].value_len), headers[i].value);
+
         if (CMP_HEADER("Connection")) {
             keep_alive =
                 headers[i].value_len > 0 &&
@@ -258,9 +284,9 @@ void HttpSession::ProcessHeaders()
             request->body_len = strtol(headers[i].value, NULL, 10);
         }
     }
+}
 
 #undef CMP_HEADER
-}
 
 
 void HttpSession::PrepareForNextRequest()
@@ -273,5 +299,10 @@ void HttpSession::PrepareForNextRequest()
     if (request) {
         delete request;
         request = NULL;
+    }
+
+    if (read_buf) {
+        delete read_buf;
+        read_buf = NULL;
     }
 }

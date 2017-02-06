@@ -10,7 +10,10 @@
 
 
 TcpSession::TcpSession()
-    : fd(0),
+    : active(false),
+    fd(0),
+    select_driver(NULL),
+    session_driver(NULL),
     read_buf_len(0),
     write_buf(NULL),
     write_buf_len(0),
@@ -19,8 +22,11 @@ TcpSession::TcpSession()
 {
 }
 
-TcpSession::TcpSession(int _fd, char *_s_addr)
-    : fd(_fd),
+TcpSession::TcpSession(int _fd, char *_s_addr, SelectLoopDriver *_sd)
+    : active(true),
+    fd(_fd),
+    select_driver(_sd),
+    session_driver(NULL),
     read_buf_len(0),
     write_buf(NULL),
     write_buf_len(0),
@@ -31,12 +37,31 @@ TcpSession::TcpSession(int _fd, char *_s_addr)
 }
 
 
-TcpSession::~TcpSession()
+bool TcpSession::ProcessRequest()
 {
+    return session_driver->ProcessRequest();
+}
+
+
+void TcpSession::Close()
+{
+    LOG_I("Closing TCP-session for %s (%d)", s_addr, fd);
+
     if (fd) {
         shutdown(fd, SHUT_RDWR);
         close(fd);
     }
+
+    active = false;
+}
+
+
+TcpSession::~TcpSession()
+{
+    if (active) this->Close();
+    session_driver->Close();
+
+    if (session_driver) delete session_driver;
 
     if (write_buf) free(write_buf);
     if (s_addr) free(s_addr);
@@ -49,7 +74,7 @@ void TcpSession::TruncateReadBuf()
 }
 
 
-bool TcpSession::Read()
+bool TcpSession::ReadToBuf()
 {
     int n = read(fd, read_buf + read_buf_len, READ_BUF_SIZE - read_buf_len);
 
@@ -69,7 +94,7 @@ bool TcpSession::Read()
 }
 
 
-bool TcpSession::Send()
+bool TcpSession::Flush()
 {
     int ret = true;
     int offset = 0;
@@ -97,21 +122,18 @@ bool TcpSession::Send()
 }
 
 
-char *TcpSession::GetReadBuf() const
+ByteArray *TcpSession::GetReadBuf() const
 {
-    char *buf = (char *)malloc(read_buf_len + 1);
-    memcpy(buf, read_buf, read_buf_len);
-    buf[read_buf_len] = '\0';
-
-    return buf;
+    return new ByteArray((char *)read_buf, read_buf_len);
 }
 
 
-void TcpSession::SetWriteBuf(char *buf, int len)
+void TcpSession::Send(ByteArray *buf)
 {
-    write_buf_len = len;
-    write_buf = (char *)malloc(len);
-    memcpy(write_buf, buf, len);
+    write_buf_len = buf->size;
+    write_buf = (char *)malloc(buf->size);
+    memcpy(write_buf, buf->data, buf->size);
+    select_driver->SetWantToWrite(fd);
 }
 
 

@@ -12,7 +12,7 @@
 extern pid_t my_pid;
 extern int max_log_level;
 
-//TODO: fix logging, merges when multiple processes are launched
+//TODO: fix logging, merges when multiple processes are launched (can use syslog)
 
 
 void get_pid_for_logger();

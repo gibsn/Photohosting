@@ -1,18 +1,33 @@
 #include "http_response.h"
 
 #include <assert.h>
+#include "common.h"
 #include <stdlib.h>
 #include <string.h>
 
 #include "log.h"
 
 
-HttpResponse::HttpResponse()
+HttpResponse::HttpResponse(
+    http_status_t _code,
+    ByteArray *_body = NULL,
+    int _minor_version = 0,
+    bool _keep_alive = false
+)
     : response(NULL),
     response_len(0),
+    minor_version(_minor_version),
+    code(_code),
+    keep_alive(_keep_alive),
     body(NULL),
-    body_len(0)
+    body_len(0),
+    finalised(false)
 {
+    if (_body) {
+        body = (char *)malloc(_body->size);
+        memcpy(body, _body->data, _body->size);
+        body_len = _body->size;
+    }
 }
 
 
@@ -23,15 +38,46 @@ HttpResponse::~HttpResponse()
 }
 
 
-void HttpResponse::AddDefaultHeaders()
+ByteArray *HttpResponse::GetResponseByteArray(http_status_t _code)
 {
-    AddStatusLine();
+    code = _code;
+    finalised = false;
 
-    AddDateHeader();
-    AddServerHeader();
-    AddConnectionHeader(keep_alive);
+    return GetResponseByteArray();
+}
 
-    AddContentLengthHeader();
+
+ByteArray *HttpResponse::GetResponseByteArray()
+{
+    if (!finalised) {
+        AddStatusLine();
+
+        AddDateHeader();
+        AddServerHeader();
+        AddConnectionHeader(keep_alive);
+
+        AddContentLengthHeader();
+
+        CloseHeaders();
+        AddBody();
+
+        response = (char *)realloc(response, response_len + 1);
+        response[response_len] = '\0';
+
+        finalised = true;
+    }
+
+    return new ByteArray(response, response_len);
+}
+
+
+void HttpResponse::SetBody(ByteArray *_body)
+{
+    if (_body) {
+        body = (char *)malloc(_body->size);
+        memcpy(body, _body->data, _body->size);
+        body_len = _body->size;
+    }
 }
 
 
@@ -98,8 +144,6 @@ void HttpResponse::AddStatusLine()
     case http_not_implemented:
         s_code = "501 NOT IMPLEMENTED";
         break;
-    default:
-        ;
     }
 
     int len = sizeof("HTTP/1.X \r\n") - 1 + strlen(s_code);
@@ -139,9 +183,10 @@ void HttpResponse::CloseHeaders()
 
 void HttpResponse::AddBody()
 {
-   if (body_len) {
-       response = (char *)realloc(response, response_len + body_len);
-       memcpy(response + response_len, body, body_len);
-       response_len += body_len;
+    if (body_len) {
+        response = (char *)realloc(response, response_len + body_len);
+
+        memcpy(response + response_len, body, body_len);
+        response_len += body_len;
     }
 }

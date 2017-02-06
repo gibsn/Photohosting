@@ -12,6 +12,7 @@ struct Config
     int n_workers;
     int max_log_level;
     char *path_to_static;
+    char *path_to_tmp_files;
 
     Config();
     ~Config();
@@ -26,8 +27,10 @@ struct ByteArray
     int size;
 
     ByteArray() : data(NULL), size(0) {};
-    ByteArray(char * _data, int _size) : data(_data), size(_size) {};
+    ByteArray(const char *, int);
     ~ByteArray() { if (data) free(data); }
+
+    void Append(const ByteArray *);
 };
 
 

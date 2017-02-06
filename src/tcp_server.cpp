@@ -37,10 +37,8 @@ TcpServer::~TcpServer()
     if (addr) free(addr);
     if (workers) delete[] workers;
     if (sessions) {
-        for (int i = 0; i < MAX_SESSIONS; ++i) {
-            if (sessions[i]) {
-                delete sessions[i];
-            }
+        for (int i = 0; i < n_sessions; ++i) {
+            delete sessions[i];
         }
 
         delete[] sessions;
@@ -80,9 +78,6 @@ void TcpServer::Init()
 
     workers = new Worker[n_workers];
     sessions = new TcpSession *[MAX_SESSIONS];
-    for (int i = 0; i < MAX_SESSIONS; ++i) {
-        sessions[i] = NULL;
-    }
 }
 
 
@@ -117,26 +112,21 @@ void TcpServer::Listen()
 }
 
 
-bool TcpServer::ProcessRequest(int fd)
-{
-    return true;
-}
-
-
 void TcpServer::ProcessRead(const fd_set &readfds, TcpSession *session)
 {
     if (FD_ISSET(session->GetFd(), &readfds)) {
         LOG_D("Got data from %s (%d)",
             session->GetSAddr(), session->GetFd());
 
-        if (session->Read()) {
-            if (!ProcessRequest(session->GetFd())) {
-                CloseSession(session->GetFd());
-            }
-        } else {
+        if (!session->ReadToBuf()) {
             LOG_D("The client from %s has closed the connection (%d)",
                 session->GetSAddr(), session->GetFd());
-            CloseSession(session->GetFd());
+            CloseSession(session);
+            return;
+        }
+
+        if (!session->ProcessRequest()) {
+            CloseSession(session);
         }
     }
 }
@@ -148,16 +138,18 @@ void TcpServer::ProcessWrite(const fd_set &writefds, TcpSession *session)
         LOG_D("Sending data to %s (%d)",
             session->GetSAddr(), session->GetFd());
 
-        if (session->Send()) {
-            LOG_D("Successfully sent data to %s (%d)",
-                session->GetSAddr(), session->GetFd());
+        if (!session->Flush()) {
+            CloseSession(session);
+            return;
+        }
 
-            FD_CLR(session->GetFd(), &so.writefds);
-            if (session->GetWantToClose()) {
-                CloseSession(session->GetFd());
-            }
-        } else {
-            CloseSession(session->GetFd());
+        LOG_D("Successfully sent data to %s (%d)",
+            session->GetSAddr(), session->GetFd());
+
+        FD_CLR(session->GetFd(), &so.writefds);
+
+        if (session->GetWantToClose()) {
+            CloseSession(session);
         }
     }
 }
@@ -183,28 +175,18 @@ void TcpServer::Serve()
 }
 
 
-void TcpServer::AddNewClient(int fd, char *s_addr)
+void TcpServer::RequestWrite(int fd)
 {
-    sessions[n_sessions] = new TcpSession(fd, s_addr);
-    n_sessions++;
-
-    FD_SET(fd, &so.readfds);
-    if (fd + 1 > so.nfds) so.nfds = fd + 1;
+    FD_SET(fd, &so.writefds);
 }
 
 
-void TcpServer::WantToCloseSession(int fd)
-{
-    TcpSession *session = GetSessionByFd(fd);
-    session->SetWantToClose(true);
-}
-
-
-void TcpServer::CloseSession(int fd)
+void TcpServer::CloseSession(TcpSession *session)
 {
     int i;
+    int fd = session->GetFd();
     int max_fd = listen_fd;
-    //TODO: use binary search here
+    //TODO: mb use binary search here
     int curr_fd;
     for (i = 0; i < n_sessions; ++i) {
         curr_fd = sessions[i]->GetFd();
@@ -212,7 +194,7 @@ void TcpServer::CloseSession(int fd)
         if (curr_fd > max_fd) max_fd = curr_fd;
     }
 
-    LOG_I("Closing TCP-session for %s (%d)", sessions[i]->GetSAddr(), sessions[i]->GetFd());
+    session->Close();
     delete sessions[i];
 
     for (int j = i + 1; j < n_sessions; ++j) {
@@ -248,7 +230,7 @@ static bool set_socket_blocking(int sock)
 }
 
 
-int TcpServer::CreateNewSession()
+TcpSession *TcpServer::CreateNewSession()
 {
     struct sockaddr_in client_addr;
     socklen_t client_len = sizeof(client_addr);
@@ -258,55 +240,31 @@ int TcpServer::CreateNewSession()
         if (errno != EAGAIN)
             LOG_E("Could not accept a new connection: %s", strerror(errno));
 
-        return -1;
+        return NULL;
     }
 
     //BSD's accept creates new socket with the same properties as the listening
-    if (!set_socket_blocking(fd)) return -1;
+    if (!set_socket_blocking(fd)) return NULL;
 
     char *client_s_addr = inet_ntoa(client_addr.sin_addr);
     LOG_I("Accepted a new connection from %s", client_s_addr);
 
     if (n_sessions < MAX_SESSIONS) {
-        AddNewClient(fd, client_s_addr);
+        sessions[n_sessions] = new TcpSession(fd, client_s_addr, this);
+        n_sessions++;
+
+        FD_SET(fd, &so.readfds);
+        if (fd + 1 > so.nfds) so.nfds = fd + 1;
     } else {
         shutdown(fd, SHUT_RDWR);
         close(fd);
         LOG_W("Declined connection from %s due to reaching MAX_SESSIONS",
             client_s_addr);
 
-        return -1;
+        return NULL;
     }
 
-    return fd;
-}
-
-
-TcpSession *TcpServer::GetSessionByFd(int fd)
-{
-    for (int i = 0; i < n_sessions; ++i) {
-        if (sessions[i]->GetFd() == fd) return sessions[i];
-    }
-
-    return sessions[0];
-}
-
-
-char *TcpServer::ReadFrom(int fd)
-{
-    TcpSession *session = GetSessionByFd(fd);
-    char *buf = session->GetReadBuf();
-    session->TruncateReadBuf();
-
-    return buf;
-}
-
-
-void TcpServer::WriteTo(int fd, char *buf, int len)
-{
-    TcpSession *session = GetSessionByFd(fd);
-    session->SetWriteBuf(buf, len);
-    FD_SET(fd, &so.writefds);
+    return sessions[n_sessions - 1];
 }
 
 
@@ -316,10 +274,10 @@ void TcpServer::Wait()
     int stat_loc;
     for (int i = 0; i < n_workers; ++i) {
         pid = wait(&stat_loc);
-        if (WEXITSTATUS(stat_loc)) {
-            LOG_E("Worker %d has exited with error", pid);
-        } else {
+        if (WIFEXITED(stat_loc)) {
             LOG_I("Worker %d has exited normally", pid);
+        } else {
+            LOG_E("Worker %d has exited with error", pid);
         }
     }
 }
