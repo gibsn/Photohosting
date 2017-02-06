@@ -152,6 +152,7 @@ void HttpSession::ProcessPostRequest()
 
     if (LOCATION_IS("/upload/photos")) {
         char *file_path = UploadFile();
+        if (!file_path) Respond(http_no_content);
     } else {
         Respond(http_not_found);
     }
@@ -172,10 +173,7 @@ char *HttpSession::UploadFile()
     file = GetFileFromRequest(&name);
     // TODO: not quite right (can be more than one file)
 
-    if (!file) {
-        Respond(http_bad_request);
-        goto fin;
-    }
+    if (!file || !name) goto fin;
 
     saved_file_path = http_server->SaveFile(file, name);
 
@@ -198,7 +196,9 @@ ByteArray *HttpSession::GetFileFromRequest(char **name) const
     ByteArray *body = parser.GetBody();
     char *_name = parser.GetFilename();
 
-    *name = _name? strdup(_name): NULL;
+    if (_name && strlen(_name) > 0) {
+        *name = strdup(_name);
+    }
 
     free(boundary);
 

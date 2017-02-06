@@ -9,6 +9,7 @@ typedef enum {
     http_continue = 100,
     http_ok = 200,
     http_created = 201,
+    http_no_content = 204,
     http_permanent_redirect = 308,
     http_bad_request = 400,
     http_not_found = 404,

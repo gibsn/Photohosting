@@ -129,6 +129,9 @@ void HttpResponse::AddStatusLine()
     case http_created:
         s_code = "201 CREATED";
         break;
+    case http_no_content:
+        s_code = "204 NO CONTENT";
+        break;
     case http_permanent_redirect:
         s_code = "308 PERMANENT REDIRECT";
         break;
