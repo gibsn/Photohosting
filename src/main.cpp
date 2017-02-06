@@ -7,8 +7,8 @@
 /*TODO:
   move select to another module
   add cfg
-  fix diag msg when fork exits
   implement 304 not modified
+  runas
 */
 
 int main(int argc, char **argv)

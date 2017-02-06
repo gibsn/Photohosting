@@ -2,6 +2,8 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -61,9 +63,41 @@ ByteArray *HttpServer::GetFileByLocation(const char *path)
 }
 
 
+char *HttpServer::SaveFile(ByteArray *file, char *name)
+{
+    //TODO: name can be too long
+    char *full_path = (char *)malloc(strlen(path_to_tmp_files) + 2 + strlen(name));
+    strcpy(full_path, path_to_tmp_files);
+    strcat(full_path, "/");
+    strcat(full_path, name);
+
+    int n;
+    int fd = open(full_path, O_CREAT | O_WRONLY, 0666);
+    if (fd == -1) {
+        LOG_E("%s", strerror(errno));
+        goto err;
+    }
+
+    n = write(fd, file->data, file->size);
+
+    if (file->size != n) {
+        LOG_E("Could not write file %s", full_path);
+        goto err;
+    }
+
+    return full_path;
+
+err:
+    if (full_path) free(full_path);
+
+    return NULL;
+}
+
+
 HttpServer::HttpServer()
-    : path_to_static(0),
-    path_to_static_len(0)
+    : path_to_static(NULL),
+    path_to_static_len(0),
+    path_to_tmp_files(NULL)
 {
 }
 
@@ -75,6 +109,9 @@ HttpServer::HttpServer(const Config &cfg)
     path_to_static = strdup(cfg.path_to_static);
     assert(path_to_static);
     path_to_static_len = strlen(path_to_static);
+
+    path_to_tmp_files = strdup(cfg.path_to_tmp_files);
+    assert(path_to_tmp_files);
 }
 
 

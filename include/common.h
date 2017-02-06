@@ -12,6 +12,7 @@ struct Config
     int n_workers;
     int max_log_level;
     char *path_to_static;
+    char *path_to_tmp_files;
 
     Config();
     ~Config();

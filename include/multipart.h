@@ -4,6 +4,8 @@
 
 #include "multipart_parser.h"
 
+#include "common.h"
+
 
 struct ByteArray;
 
@@ -13,6 +15,7 @@ class MultipartParser
     multipart_parser *m_parser;
     multipart_parser_settings m_callbacks;
 
+    const char *boundary;
     char *filename;
     ByteArray *body;
 
@@ -25,7 +28,10 @@ public:
 
     void Execute(const ByteArray &);
 
-    ByteArray *GetBody() { return body; }
+    ByteArray *GetBody() const {
+        return new ByteArray(body->data, body->size - 6);
+    }
+
     char *GetFilename() { return filename; }
 };
 #endif

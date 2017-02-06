@@ -40,9 +40,10 @@ class HttpSession: public TcpSessionDriver
     void Respond(http_status_t);
 
     void RespondStatic(const char *);
-    void RespondUpload(const char *);
 
-    ByteArray *GetFileFromRequest(const char *) const;
+    char *UploadFile();
+
+    ByteArray *GetFileFromRequest(char **) const;
 
 public:
     HttpSession(TcpSession *, HttpServer *);

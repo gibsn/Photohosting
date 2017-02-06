@@ -34,17 +34,22 @@ fin:
 int MultipartParser::ReadBody(multipart_parser *p, const char *at, size_t length)
 {
     MultipartParser *me = (MultipartParser*)multipart_parser_get_data(p);
+    int boundary_len = strlen(me->boundary) - 2;
+    int min_size = length < boundary_len? length: boundary_len;
 
-    ByteArray *part_body = new ByteArray(at, length);
-    me->body->Append(part_body);
-    delete part_body;
+    if (0 != strncmp(me->boundary + 2, at, min_size)) {
+        ByteArray *part_body = new ByteArray(at, length);
+        me->body->Append(part_body);
+        delete part_body;
+    }
 
     return 0;
 }
 
 
-MultipartParser::MultipartParser(const char *boundary)
-    : filename(NULL),
+MultipartParser::MultipartParser(const char *_boundary)
+    : boundary(_boundary),
+    filename(NULL),
     body(NULL)
 {
     memset(&m_callbacks, 0, sizeof(multipart_parser_settings));

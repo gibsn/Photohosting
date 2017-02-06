@@ -72,7 +72,6 @@ bool HttpSession::ProcessRequest()
     //TODO: guess I can allocate Content-Length just once
     read_buf->Append(tcp_read_buf);
 
-    // hexdump((uint8_t *)read_buf->data, read_buf->size);
     switch(ParseHttpRequest(read_buf)) {
     case ok:
         break;
@@ -84,6 +83,7 @@ bool HttpSession::ProcessRequest()
         goto fin;
         break;
     }
+    // hexdump((uint8_t *)read_buf->data, read_buf->size);
 
     response = new HttpResponse(http_ok, NULL, request->minor_version, keep_alive);
 
@@ -146,27 +146,12 @@ void HttpSession::ProcessGetRequest()
 }
 
 
-void HttpSession::RespondUpload(const char *path)
-{
-    // TODO: filename here
-    ByteArray* file = GetFileFromRequest(path);
-    // TODO: not quite right
-    if (!file) {
-        Respond(http_bad_request);
-        return;
-    }
-    // http_server->SaveFile(file, name);
-
-    delete file;
-}
-
-
 void HttpSession::ProcessPostRequest()
 {
     char *path = strndup(request->path, request->path_len);
 
-    if (LOCATION_STARTS_WITH("/upload/")) {
-        RespondUpload(path);
+    if (LOCATION_IS("/upload/photos")) {
+        char *file_path = UploadFile();
     } else {
         Respond(http_not_found);
     }
@@ -178,7 +163,31 @@ void HttpSession::ProcessPostRequest()
 #undef LOCATION_STARTS_WITH
 
 
-ByteArray *HttpSession::GetFileFromRequest(const char *req_path) const
+char *HttpSession::UploadFile()
+{
+    char *name = NULL;
+    ByteArray* file = NULL;
+    char *saved_file_path = NULL;
+
+    file = GetFileFromRequest(&name);
+    // TODO: not quite right (can be more than one file)
+
+    if (!file) {
+        Respond(http_bad_request);
+        goto fin;
+    }
+
+    saved_file_path = http_server->SaveFile(file, name);
+
+fin:
+    if (name) free(name);
+    if (file) delete file;
+
+    return saved_file_path;
+}
+
+
+ByteArray *HttpSession::GetFileFromRequest(char **name) const
 {
     char *boundary = request->GetMultipartBondary();
     if (!boundary) return NULL;
@@ -187,11 +196,13 @@ ByteArray *HttpSession::GetFileFromRequest(const char *req_path) const
     parser.Execute(ByteArray(request->body, request->body_len));
 
     ByteArray *body = parser.GetBody();
+    char *_name = parser.GetFilename();
 
-    // hexdump((uint8_t*)body->data, body->size);
+    *name = _name? strdup(_name): NULL;
+
     free(boundary);
 
-    return NULL;
+    return body;
 }
 
 
