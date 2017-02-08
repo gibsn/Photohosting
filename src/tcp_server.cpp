@@ -8,6 +8,7 @@
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "common.h"
@@ -96,6 +97,8 @@ void TcpServer::Listen()
     int pid;
     for (int i = 0; i < n_workers; ++i) {
         pid = fork();
+
+        srand(time(NULL) ^ (getpid() << 16));
 
         if (pid == -1) {
             LOG_E("Could not fork a worker: %s", strerror(errno));

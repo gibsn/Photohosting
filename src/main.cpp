@@ -16,8 +16,6 @@ int main(int argc, char **argv)
 {
     Config cfg;
 
-    srand(time(NULL));
-
     if (!process_cmd_arguments(argc, argv, cfg)) return -1;
     cfg.Check();
     LOG_I("Initialised config");
