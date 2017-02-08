@@ -18,6 +18,8 @@ class HttpSession: public TcpSessionDriver
 {
     HttpServer *http_server;
 
+    char *s_addr;
+
     ByteArray *read_buf;
 
     bool active;
@@ -41,7 +43,7 @@ class HttpSession: public TcpSessionDriver
 
     void RespondStatic(const char *);
 
-    char *UploadFile();
+    char *UploadFile(const char *);
     http_status_t CreateWebAlbum();
 
     ByteArray *GetFileFromRequest(char **) const;

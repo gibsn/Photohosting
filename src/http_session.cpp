@@ -15,6 +15,7 @@
 
 HttpSession::HttpSession(TcpSession *_tcp_session, HttpServer *_http_server)
     : http_server(_http_server),
+    s_addr(NULL),
     read_buf(NULL),
     active(true),
     tcp_session(_tcp_session),
@@ -22,6 +23,7 @@ HttpSession::HttpSession(TcpSession *_tcp_session, HttpServer *_http_server)
     response(NULL),
     keep_alive(true)
 {
+    s_addr = strdup(tcp_session->GetSAddr());
 }
 
 
@@ -30,6 +32,7 @@ HttpSession::~HttpSession()
     if (active) this->Close();
 
     if (read_buf) delete read_buf;
+    if (s_addr) free(s_addr);
 
     if (request) delete request;
     if (response) delete response;
@@ -152,6 +155,7 @@ void HttpSession::ProcessPostRequest()
     http_status_t code = http_not_found;
 
     if (LOCATION_IS("/upload/photos")) {
+        LOG_I("Client from %s is trying to upload photos", s_addr);
         code = CreateWebAlbum();
     }
 
@@ -172,7 +176,7 @@ http_status_t HttpSession::CreateWebAlbum()
     const char *page_title = "test_album";
     http_status_t code = http_no_content;
 
-    if (!(file_path = UploadFile())) goto fin;
+    if (!(file_path = UploadFile(user))) goto fin;
 
     // TODO: make auth
     // TODO: get page title from somewhere
@@ -194,13 +198,14 @@ fin:
 }
 
 
-char *HttpSession::UploadFile()
+char *HttpSession::UploadFile(const char *user)
 {
     char *name = NULL;
     ByteArray* file = NULL;
     char *saved_file_path = NULL;
 
     file = GetFileFromRequest(&name);
+    LOG_I("Got file \'%s\' from user %s (%d bytes)", name, user, file->size);
     // TODO: not quite right (can be more than one file)
 
     if (!file || !name) goto fin;

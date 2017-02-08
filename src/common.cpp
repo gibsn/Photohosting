@@ -245,13 +245,13 @@ void hexdump(uint8_t *buf, size_t len) {
 
 char *gen_random_string(int length) {
     static char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
-	char *result = (char *)malloc(length + 1);
+    char *result = (char *)malloc(length + 1);
 
     for (int i = 0; i < length; i++) {
         result[i] = charset[rand() % (sizeof charset - 1)];
-	}
+    }
 
-	result[length] = '\0';
+    result[length] = '\0';
 
     return result;
 }
