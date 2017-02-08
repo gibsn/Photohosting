@@ -31,13 +31,16 @@ fin:
 }
 
 
+#define MAGIC_NUMBER 2
+
 int MultipartParser::ReadBody(multipart_parser *p, const char *at, size_t length)
 {
     MultipartParser *me = (MultipartParser*)multipart_parser_get_data(p);
-    int boundary_len = strlen(me->boundary) - 2;
-    int min_size = length < boundary_len? length: boundary_len;
+    int min_size = MIN(length, me->boundary_len);
 
-    if (0 != strncmp(me->boundary + 2, at, min_size)) {
+    if (0 != strncmp(me->boundary + MAGIC_NUMBER, at, min_size) ||
+        me->boundary_len != length
+    ) {
         ByteArray *part_body = new ByteArray(at, length);
         me->body->Append(part_body);
         delete part_body;
@@ -52,6 +55,8 @@ MultipartParser::MultipartParser(const char *_boundary)
     filename(NULL),
     body(NULL)
 {
+    boundary_len = strlen(boundary) - MAGIC_NUMBER;
+
     memset(&m_callbacks, 0, sizeof(multipart_parser_settings));
     m_callbacks.on_header_value = ReadHeaderValue;
     m_callbacks.on_part_data = ReadBody;
@@ -61,6 +66,8 @@ MultipartParser::MultipartParser(const char *_boundary)
     m_parser = multipart_parser_init(boundary, &m_callbacks);
     multipart_parser_set_data(m_parser, this);
 }
+
+#undef MAGIC_NUMBER
 
 
 MultipartParser::~MultipartParser()

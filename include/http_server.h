@@ -7,6 +7,7 @@
 #include "tcp_session.h"
 
 
+
 struct Config;
 
 
@@ -17,9 +18,12 @@ class HttpServer: public TcpServer {
 
     char *path_to_tmp_files;
 
+    char *path_to_css; // relatively to path_to_static
+
     virtual TcpSession *CreateNewSession();
 
     char *AddPathToStaticPrefix(const char *) const;
+    bool CreateUserPaths(const char *, const char *, const char *) const;
 
     void ProcessGetRequest();
     void ProcessPostRequest();
@@ -32,6 +36,7 @@ public:
     ByteArray *GetFileByLocation(const char *);
 
     char *SaveFile(ByteArray *, char *);
+    char *CreateAlbum(const char *, char *, const char *);
 };
 
 

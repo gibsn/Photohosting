@@ -16,6 +16,7 @@ class MultipartParser
     multipart_parser_settings m_callbacks;
 
     const char *boundary;
+    int boundary_len;
     char *filename;
     ByteArray *body;
 

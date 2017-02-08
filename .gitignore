@@ -1,4 +1,5 @@
-bridge.touch
+.bridge.touch
+
 bridge/include
 bridge/lib
 deps

@@ -29,7 +29,7 @@ server: $(OBJ_MODULES)
 	$(CXX) $(CXXFLAGS) $(OBJ_MODULES) -o $@ $(LDFLAGS)
 
 ifneq ($(MAKECMDGOALS), clean)
--include bridge.touch
+-include .bridge.touch
 endif
 
 $(DEPS_DIR)/%.d: $(SRC_DIR)/%.cpp
@@ -38,9 +38,7 @@ $(DEPS_DIR)/%.d: $(SRC_DIR)/%.cpp
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-bridge.touch:
-	git submodule init
-	git submodule update
+.bridge.touch:
 	mkdir -p $(OBJ_DIR)
 	mkdir -p $(DEPS_DIR)
 	mkdir -p $(BRIDGE_DIR)/include
@@ -55,7 +53,7 @@ clean:
 	rm -rf $(BRIDGE_DIR)/include
 	rm -rf $(BRIDGE_DIR)/lib
 	rm -rf $(BRIDGE_DIR)/bin
-	rm -f bridge.touch
+	rm -f .bridge.touch
 	make -C $(dir $(BRIDGE_DIR)/Makefile) -f Makefile clean
 
 clangcomp:

@@ -242,3 +242,40 @@ void hexdump(uint8_t *buf, size_t len) {
 
     fprintf(stderr, "%s", LOG_COLOUR_NORMAL);
 }
+
+char *gen_random_string(int length) {
+    static char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+	char *result = (char *)malloc(length + 1);
+
+    for (int i = 0; i < length; i++) {
+        result[i] = charset[rand() % (sizeof charset - 1)];
+	}
+
+	result[length] = '\0';
+
+    return result;
+}
+
+
+int mkdir_p(const char *path, mode_t mode)
+{
+    if (!path) return true;
+
+    char *curr_dir = strchr(path + 1, '/');
+    while(curr_dir) {
+        char c = *curr_dir;
+        *curr_dir = '\0';
+
+        if (!file_exists(path)) {
+            if (mkdir(path, mode)) return -1;
+        }
+
+        *curr_dir = c;
+        curr_dir = strchr(++curr_dir, '/');
+    }
+
+    return 0;
+}
+
+
+

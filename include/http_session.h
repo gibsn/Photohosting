@@ -42,6 +42,7 @@ class HttpSession: public TcpSessionDriver
     void RespondStatic(const char *);
 
     char *UploadFile();
+    http_status_t CreateWebAlbum();
 
     ByteArray *GetFileFromRequest(char **) const;
 

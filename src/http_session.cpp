@@ -149,19 +149,49 @@ void HttpSession::ProcessGetRequest()
 void HttpSession::ProcessPostRequest()
 {
     char *path = strndup(request->path, request->path_len);
+    http_status_t code = http_not_found;
 
     if (LOCATION_IS("/upload/photos")) {
-        char *file_path = UploadFile();
-        if (!file_path) Respond(http_no_content);
-    } else {
-        Respond(http_not_found);
+        code = CreateWebAlbum();
     }
 
     free(path);
+
+    Respond(code);
 }
 
 #undef LOCATION_IS
 #undef LOCATION_STARTS_WITH
+
+
+http_status_t HttpSession::CreateWebAlbum()
+{
+    char *file_path = NULL;
+    char *album_path = NULL;
+    const char *user = "test";
+    const char *page_title = "test_album";
+    http_status_t code = http_no_content;
+
+    if (!(file_path = UploadFile())) goto fin;
+
+    // TODO: make auth
+    // TODO: get page title from somewhere
+    LOG_I("Creating new album for user \'%s\'", user);
+    album_path = http_server->CreateAlbum(user, file_path, page_title);
+    if (!album_path) goto fin;
+
+    LOG_I("The album for user \'%s\' has been successfully created at %s", user, album_path);
+
+    // response->AddLocationHeader();
+
+    code = http_created;
+
+fin:
+    if (file_path) free(file_path);
+    if (album_path) free(album_path);
+
+    return code;
+}
 
 
 char *HttpSession::UploadFile()
