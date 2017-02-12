@@ -187,7 +187,7 @@ http_status_t HttpSession::CreateWebAlbum()
     LOG_I("Creating new album for user \'%s\'", user);
     err = http_server->CreateAlbum((char *)user, file_path, (char *)page_title, &album_path);
     if (err) {
-        LOG_E("WebAlbumCreator: %s\n", err);
+        LOG_E("WebAlbumCreator: %s", err);
         goto fin;
     }
 

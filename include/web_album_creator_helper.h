@@ -17,6 +17,6 @@ bool create_user_paths(
         const char *srcs_path,
         const char *thmbs_path);
 
-// int clean_paths(const WebAlbumParams &);
+int clean_paths(const WebAlbumParams &cfg);
 
 #endif

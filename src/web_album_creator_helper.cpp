@@ -28,7 +28,7 @@ char *make_user_path(char *path_to_static, char *user)
 }
 
 
-char *make_path_to_unpack(char *user_path, char *random_id)
+static char *make_path_to_unpack(char *user_path, char *random_id)
 {
     int path_to_unpack_len = strlen(user_path) + sizeof "srcs/" - 1;
     path_to_unpack_len += strlen(random_id) + sizeof "/";
@@ -45,7 +45,7 @@ char *make_path_to_unpack(char *user_path, char *random_id)
 }
 
 
-char *make_path_to_thumbs(char *user_path, char *random_id)
+static char *make_path_to_thumbs(char *user_path, char *random_id)
 {
     int path_to_thumbs_len = strlen(user_path) + sizeof "thmbs/" - 1;
     path_to_thumbs_len += strlen(random_id) + sizeof "/";
@@ -62,7 +62,7 @@ char *make_path_to_thumbs(char *user_path, char *random_id)
 }
 
 
-char *make_path_to_webpage(char *user_path, char *random_id)
+static char *make_path_to_webpage(char *user_path, char *random_id)
 {
     int path_to_webpage_len = strlen(user_path) + sizeof "/" - 1;
     path_to_webpage_len += strlen(random_id) + sizeof ".html";
@@ -92,7 +92,7 @@ char *make_path_to_css(char *path_to_css)
 }
 
 
-char *make_r_path_to_srcs(char *user, char *random_id)
+static char *make_r_path_to_srcs(char *user, char *random_id)
 {
     int r_path_to_srcs_len = sizeof "/static/" - 1 + strlen(user);
     r_path_to_srcs_len +=  sizeof "/srcs/" - 1 + strlen(random_id) + sizeof "/";
@@ -110,7 +110,7 @@ char *make_r_path_to_srcs(char *user, char *random_id)
 }
 
 
-char *make_r_path_to_thmbs(char *user, char *random_id)
+static char *make_r_path_to_thmbs(char *user, char *random_id)
 {
     int r_path_to_thmbs_len = sizeof "/static/" - 1 + strlen(user);
     r_path_to_thmbs_len +=  sizeof "/thmbs/" - 1 + strlen(random_id) + sizeof "/";
@@ -220,6 +220,32 @@ bool create_user_paths(
 }
 
 
-// int clean_paths(const WebAlbumParams *cfg)
-// {
-// }
+int clean_paths(const WebAlbumParams &cfg)
+{
+    if (rm_rf(cfg.path_to_unpack)) {
+        LOG_E("Could not delete original photos at %s", cfg.path_to_unpack);
+        return -1;
+    }
+
+    if (remove(cfg.path_to_unpack)) {
+        LOG_E("Could not path with the original photos at %s", cfg.path_to_unpack);
+        return -1;
+    }
+
+    if (rm_rf(cfg.path_to_thumbnails)) {
+        LOG_E("Could not delete thumbnails at %s", cfg.path_to_thumbnails);
+        return -1;
+    }
+
+    if (remove(cfg.path_to_thumbnails)) {
+        LOG_E("Could not path with the thumbnails at %s", cfg.path_to_thumbnails);
+        return -1;
+    }
+
+    return 0;
+}
+
+
+
+
+

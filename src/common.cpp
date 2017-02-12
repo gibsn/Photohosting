@@ -2,6 +2,7 @@
 
 #include <arpa/inet.h>
 #include <errno.h>
+#include <dirent.h>
 #include <fcntl.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -97,7 +98,7 @@ void ByteArray::Append(const ByteArray *arr)
 }
 
 
-void print_help()
+static void print_help()
 {
     fprintf(stderr,
         "HTTP-server\n\n"
@@ -278,4 +279,45 @@ int mkdir_p(const char *path, mode_t mode)
 }
 
 
+static int is_regular_file(const char *path)
+{
+    struct stat path_stat;
+    stat(path, &path_stat);
 
+    return S_ISREG(path_stat.st_mode);
+}
+
+
+int rm_rf(const char *path)
+{
+    DIR *dir = opendir(path);
+    struct dirent *next_file;
+    while ((next_file = readdir(dir)) != NULL) {
+        if (0 == strcmp(next_file->d_name, ".") ||
+            0 == strcmp(next_file->d_name, "..")
+        ) {
+            continue;
+        }
+
+        char *new_path = (char *)malloc(512);
+        int n = snprintf(new_path, 512, "%s/%s", path, next_file->d_name);
+        if (n < 0 || n >= 512) {
+            LOG_E("rm_all_files(): filepath excedeed the size of buf");
+            return -1;
+        }
+
+        if (!is_regular_file(new_path)) rm_rf(new_path);
+
+        int err = remove(new_path);
+        if (err) {
+            LOG_E("Could not delete %s: %s", new_path, strerror(errno));
+            return -1;
+        }
+
+        free(new_path);
+    }
+
+    if (dir) closedir(dir);
+
+    return 0;
+}

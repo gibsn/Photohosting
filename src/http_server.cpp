@@ -119,8 +119,14 @@ char *HttpServer::CreateAlbum(char *user, char *archive, char *title, char **pat
         CreateWebAlbum(cfg);
     }
     catch (WebAlbumCreatorEx &ex) {
+        LOG_E("Could not create album %s for user %s", title, user);
         wac_err = strdup(ex.GetErrMsg());
-        // clean_paths(cfg);
+
+        if (clean_paths(cfg)) {
+            LOG_E("Could not clean paths after failing to create album");
+        } else {
+            LOG_I("Cleaned the paths after failing to create album");
+        }
     }
 
     *path = make_r_path_to_webpage((char *)user, random_id);

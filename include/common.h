@@ -41,6 +41,7 @@ ByteArray *read_file(const char *);
 bool file_exists(const char *);
 char *gen_random_string(int);
 int mkdir_p(const char *, mode_t);
+int rm_rf(const char *path);
 
 
 #define MIN(a,b) a < b ? a : b
