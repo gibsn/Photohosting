@@ -17,6 +17,7 @@ WebAlbumCreator:
 	make -C $(WEBALBUMCREATOR_DIR) -f Makefile static
 	cp $(WEBALBUMCREATOR_DIR)/$(WEBALBUMCREATOR_STATIC) $(LIBRARY_DIR)
 	cp $(WEBALBUMCREATOR_DIR)/include/WebAlbumCreator.h $(INCLUDE_DIR)
+	cp $(WEBALBUMCREATOR_DIR)/include/Exceptions.h $(INCLUDE_DIR)
 
 picohttpparser:
 	@echo "Compiling picohttpparser"

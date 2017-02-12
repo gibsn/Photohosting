@@ -23,7 +23,6 @@ class HttpServer: public TcpServer {
     virtual TcpSession *CreateNewSession();
 
     char *AddPathToStaticPrefix(const char *) const;
-    bool CreateUserPaths(const char *, const char *, const char *) const;
 
     void ProcessGetRequest();
     void ProcessPostRequest();
@@ -36,7 +35,7 @@ public:
     ByteArray *GetFileByLocation(const char *);
 
     char *SaveFile(ByteArray *, char *);
-    char *CreateAlbum(const char *, char *, const char *);
+    char *CreateAlbum(char *, char *, char *, char **);
 };
 
 

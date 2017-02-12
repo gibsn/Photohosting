@@ -171,9 +171,13 @@ void HttpSession::ProcessPostRequest()
 http_status_t HttpSession::CreateWebAlbum()
 {
     char *file_path = NULL;
-    char *album_path = NULL;
+
     const char *user = "test";
     const char *page_title = "test_album";
+
+    char *err = NULL;
+    char *album_path = NULL;
+
     http_status_t code = http_no_content;
 
     if (!(file_path = UploadFile(user))) goto fin;
@@ -181,8 +185,11 @@ http_status_t HttpSession::CreateWebAlbum()
     // TODO: make auth
     // TODO: get page title from somewhere
     LOG_I("Creating new album for user \'%s\'", user);
-    album_path = http_server->CreateAlbum(user, file_path, page_title);
-    if (!album_path) goto fin;
+    err = http_server->CreateAlbum((char *)user, file_path, (char *)page_title, &album_path);
+    if (err) {
+        LOG_E("WebAlbumCreator: %s\n", err);
+        goto fin;
+    }
 
     LOG_I("The album for user \'%s\' has been successfully created at %s", user, album_path);
 
@@ -193,6 +200,7 @@ http_status_t HttpSession::CreateWebAlbum()
 fin:
     if (file_path) free(file_path);
     if (album_path) free(album_path);
+    if (err) free(err);
 
     return code;
 }

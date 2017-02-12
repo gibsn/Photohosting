@@ -19,7 +19,7 @@
 #include "http_response.h"
 #include "http_session.h"
 #include "log.h"
-#include "web_album_creator_preprocessor.h"
+#include "web_album_creator_helper.h"
 
 
 char *HttpServer::AddPathToStaticPrefix(const char *path) const
@@ -98,73 +98,32 @@ err:
 }
 
 
-bool HttpServer::CreateUserPaths(
-        const char *user_path,
-        const char *srcs_path,
-        const char *thmbs_path) const
-{
-    if (!file_exists(user_path)) {
-        if (mkdir(user_path, 0777)) {
-            LOG_E("Could not create directory %s: %s", user_path, strerror(errno));
-            return false;
-        }
-
-        LOG_I("Created directory %s", user_path);
-    }
-
-    if (mkdir_p(srcs_path, 0777)) {
-        LOG_E("Could not create directory %s: %s", srcs_path, strerror(errno));
-        return false;
-    }
-
-    LOG_I("Created directory %s", srcs_path);
-
-    if (mkdir_p(thmbs_path, 0777)) {
-        LOG_E("Could not create directory %s: %s", thmbs_path, strerror(errno));
-        return false;
-    }
-
-    LOG_I("Created directory %s", thmbs_path);
-
-    return true;
-}
-
-
-char *HttpServer::CreateAlbum(const char *user, char *archive, const char *title)
+char *HttpServer::CreateAlbum(char *user, char *archive, char *title, char **path)
 {
     int random_id_len = 16;
     char *random_id = gen_random_string(random_id_len);
-    WebAlbumParams cfg;
-
-    cfg.path_to_archive = archive;
-    cfg.web_page_title = title;
 
     char *user_path = make_user_path(path_to_static, (char *)user);
 
-    cfg.path_to_unpack = make_path_to_unpack(user_path, random_id);
-    cfg.path_to_thumbnails = make_path_to_thumbs(user_path, random_id);
-    cfg.path_to_webpage = make_path_to_webpage(user_path, random_id);
-
+    WebAlbumParams cfg = album_params_helper((char *)user, user_path, random_id);
+    cfg.path_to_archive = archive;
+    cfg.web_page_title = title;
     cfg.path_to_css = make_path_to_css(path_to_css);
 
-    cfg.relative_path_to_originals = make_r_path_to_srcs((char *)user, random_id);
-    cfg.relative_path_to_thumbnails = make_r_path_to_thmbs((char *)user, random_id);
+    album_creator_debug(cfg);
 
-    char *r_path_to_web_page = make_r_path_to_webpage((char *)user, random_id);
+    create_user_paths(user_path, cfg.path_to_unpack, cfg.path_to_thumbnails);
 
-    CreateUserPaths(user_path, cfg.path_to_unpack, cfg.path_to_thumbnails);
+    char *wac_err = NULL;
+    try {
+        CreateWebAlbum(cfg);
+    }
+    catch (WebAlbumCreatorEx &ex) {
+        wac_err = strdup(ex.GetErrMsg());
+        // clean_paths(cfg);
+    }
 
-    LOG_D("path_to_archive: %s", cfg.path_to_archive);
-    LOG_D("web_page_title: %s", cfg.web_page_title);
-    LOG_D("path_to_srcs: %s", cfg.path_to_unpack);
-    LOG_D("path_to_thumbs: %s", cfg.path_to_thumbnails);
-    LOG_D("path_to_webpage: %s", cfg.path_to_webpage);
-    LOG_D("path_to_css: %s", cfg.path_to_css);
-    LOG_D("relative_path_to_srcs: %s", cfg.relative_path_to_originals);
-    LOG_D("relative_path_to_thmbs: %s", cfg.relative_path_to_thumbnails);
-
-    // TODO: need diags here
-    CreateWebAlbum(cfg);
+    *path = make_r_path_to_webpage((char *)user, random_id);
 
     int err = remove(archive);
     if (err) {
@@ -172,16 +131,10 @@ char *HttpServer::CreateAlbum(const char *user, char *archive, const char *title
     }
 
     free(random_id);
-
     free(user_path);
-    free((char *)cfg.path_to_unpack);
-    free((char *)cfg.path_to_thumbnails);
-    free((char *)cfg.path_to_webpage);
-    free((char *)cfg.path_to_css);
-    free((char *)cfg.relative_path_to_originals);
-    free((char *)cfg.relative_path_to_thumbnails);
+    free_album_params(cfg);
 
-    return r_path_to_web_page;
+    return wac_err;
 }
 
 

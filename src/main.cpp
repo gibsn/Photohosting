@@ -5,12 +5,6 @@
 #include "http_server.h"
 #include "log.h"
 
-/*TODO:
-  move select to another module
-  add cfg
-  implement 304 not modified
-  runas
-*/
 
 int main(int argc, char **argv)
 {
