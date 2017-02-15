@@ -87,20 +87,19 @@ bool HttpSession::ProcessRequest()
         break;
     }
     // hexdump((uint8_t *)read_buf->data, read_buf->size);
-
-    response = new HttpResponse(http_ok, NULL, request->minor_version, keep_alive);
-
     LOG_D("Processing HTTP-request");
 
     if (!ValidateLocation(strndup(request->path, request->path_len))) {
-        Respond(http_bad_request);
+        response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
     } else if (METHOD_IS("GET")) {
         ProcessGetRequest();
     } else if (METHOD_IS("POST")) {
         ProcessPostRequest();
     } else {
-        Respond(http_not_found);
+        response = new HttpResponse(http_not_found, request->minor_version, keep_alive);
     }
+
+    Respond();
 
     if (!keep_alive) tcp_session->SetWantToClose(true);
     PrepareForNextRequest();
@@ -123,12 +122,14 @@ void HttpSession::RespondStatic(const char *path)
     ByteArray *file = http_server->GetFileByLocation(path);
 
     if (!file) {
-        Respond(http_not_found);
+        response = new HttpResponse(http_not_found, request->minor_version, keep_alive);
         return;
     }
 
+
+    response = new HttpResponse(http_ok, request->minor_version, keep_alive);
     response->SetBody(file);
-    Respond(http_ok);
+
     delete file;
 }
 
@@ -138,11 +139,11 @@ void HttpSession::ProcessGetRequest()
     char *path = strndup(request->path, request->path_len);
 
     if (LOCATION_IS("/")) {
-        Respond(http_ok);
+        response = new HttpResponse(http_ok, request->minor_version, keep_alive);
     } else if (LOCATION_STARTS_WITH("/static/")) {
         RespondStatic(path);
     } else {
-        Respond(http_not_found);
+        response = new HttpResponse(http_not_found, request->minor_version, keep_alive);
     }
 
     free(path);
@@ -156,19 +157,24 @@ void HttpSession::ProcessPostRequest()
 
     if (LOCATION_IS("/upload/photos")) {
         LOG_I("Client from %s is trying to upload photos", s_addr);
-        code = CreateWebAlbum();
+
+        char *album_path = CreateWebAlbum();
+        if (album_path) code = http_see_other;
+
+        response = new HttpResponse(code, request->minor_version, keep_alive);
+        response->AddLocationHeader(album_path);
+    } else {
+        response = new HttpResponse(code, request->minor_version, keep_alive);
     }
 
     free(path);
-
-    Respond(code);
 }
 
 #undef LOCATION_IS
 #undef LOCATION_STARTS_WITH
 
 
-http_status_t HttpSession::CreateWebAlbum()
+char *HttpSession::CreateWebAlbum()
 {
     char *file_path = NULL;
 
@@ -177,8 +183,6 @@ http_status_t HttpSession::CreateWebAlbum()
 
     char *err = NULL;
     char *album_path = NULL;
-
-    http_status_t code = http_no_content;
 
     if (!(file_path = UploadFile(user))) goto fin;
 
@@ -193,16 +197,11 @@ http_status_t HttpSession::CreateWebAlbum()
 
     LOG_I("The album for user \'%s\' has been successfully created at %s", user, album_path);
 
-    // response->AddLocationHeader();
-
-    code = http_created;
-
 fin:
     if (file_path) free(file_path);
-    if (album_path) free(album_path);
     if (err) free(err);
 
-    return code;
+    return album_path;
 }
 
 
@@ -249,9 +248,9 @@ ByteArray *HttpSession::GetFileFromRequest(char **name) const
 }
 
 
-void HttpSession::Respond(http_status_t code)
+void HttpSession::Respond()
 {
-    ByteArray *r = response->GetResponseByteArray(code);
+    ByteArray *r = response->GetResponseByteArray();
     tcp_session->Send(r);
 
     delete r;
@@ -349,3 +348,4 @@ void HttpSession::PrepareForNextRequest()
         read_buf = NULL;
     }
 }
+

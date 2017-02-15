@@ -10,7 +10,6 @@
 
 HttpResponse::HttpResponse(
     http_status_t _code,
-    ByteArray *_body = NULL,
     int _minor_version = 0,
     bool _keep_alive = false
 )
@@ -23,11 +22,11 @@ HttpResponse::HttpResponse(
     body_len(0),
     finalised(false)
 {
-    if (_body) {
-        body = (char *)malloc(_body->size);
-        memcpy(body, _body->data, _body->size);
-        body_len = _body->size;
-    }
+    AddStatusLine();
+
+    AddDateHeader();
+    AddServerHeader();
+    AddConnectionHeader(keep_alive);
 }
 
 
@@ -50,19 +49,10 @@ ByteArray *HttpResponse::GetResponseByteArray(http_status_t _code)
 ByteArray *HttpResponse::GetResponseByteArray()
 {
     if (!finalised) {
-        AddStatusLine();
-
-        AddDateHeader();
-        AddServerHeader();
-        AddConnectionHeader(keep_alive);
-
         AddContentLengthHeader();
-
         CloseHeaders();
-        AddBody();
 
-        response = (char *)realloc(response, response_len + 1);
-        response[response_len] = '\0';
+        AddBody();
 
         finalised = true;
     }
@@ -132,6 +122,9 @@ void HttpResponse::AddStatusLine()
     case http_no_content:
         s_code = "204 NO CONTENT";
         break;
+    case http_see_other:
+        s_code = "303 SEE OTHER";
+        break;
     case http_permanent_redirect:
         s_code = "308 PERMANENT REDIRECT";
         break;
@@ -173,6 +166,12 @@ void HttpResponse::AddContentLengthHeader()
     assert(ret);
 
     AddHeader("Content-Length", buf);
+}
+
+
+void HttpResponse::AddLocationHeader(const char *loc)
+{
+    AddHeader("Location", loc);
 }
 
 

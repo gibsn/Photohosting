@@ -10,6 +10,7 @@ typedef enum {
     http_ok = 200,
     http_created = 201,
     http_no_content = 204,
+    http_see_other = 303,
     http_permanent_redirect = 308,
     http_bad_request = 400,
     http_not_found = 404,
@@ -42,6 +43,9 @@ struct HttpResponse {
     void AddServerHeader();
     void AddConnectionHeader(bool);
 
+    //Response hedaers
+    void AddLocationHeader(const char *loc);
+
     //Entity headers
     void AddContentLengthHeader();
 
@@ -51,7 +55,7 @@ struct HttpResponse {
 
 public:
     HttpResponse();
-    HttpResponse(http_status_t, ByteArray *, int, bool);
+    HttpResponse(http_status_t code, int minor_version, bool keep_alive);
     ~HttpResponse();
 
     ByteArray *GetResponseByteArray();

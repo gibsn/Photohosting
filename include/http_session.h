@@ -39,12 +39,12 @@ class HttpSession: public TcpSessionDriver
     void ProcessGetRequest();
     void ProcessPostRequest();
 
-    void Respond(http_status_t);
+    void Respond();
 
     void RespondStatic(const char *);
 
     char *UploadFile(const char *);
-    http_status_t CreateWebAlbum();
+    char *CreateWebAlbum();
 
     ByteArray *GetFileFromRequest(char **) const;
 
