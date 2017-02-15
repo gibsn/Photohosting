@@ -141,6 +141,8 @@ bool Auth::Init(const char *filepath)
     }
 
     fclose(file);
+    LOG_I("Initialised auth");
+
     return true;
 }
 

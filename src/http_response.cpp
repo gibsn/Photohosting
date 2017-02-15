@@ -131,6 +131,9 @@ void HttpResponse::AddStatusLine()
     case http_bad_request:
         s_code = "400 BAD REQUEST";
         break;
+    case http_unauthorized:
+        s_code = "401 UNAUTHORIZED";
+        break;
     case http_not_found:
         s_code = "404 NOT FOUND";
         break;

@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "auth_driver.h"
+
 
 enum auth_file_parser_state_t {
     new_line,
@@ -59,7 +61,7 @@ public:
 };
 
 
-class Auth {
+class Auth: public AuthDriver{
     UsersList users_list;
     FILE *file;
 

@@ -14,6 +14,7 @@
 
 #include "WebAlbumCreator.h"
 
+#include "auth.h"
 #include "common.h"
 #include "http_request.h"
 #include "http_response.h"

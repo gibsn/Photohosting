@@ -117,7 +117,7 @@ fin:
 #define LOCATION_IS(str) !strcmp(path, str)
 #define LOCATION_STARTS_WITH(str) path == strstr(path, str)
 
-void HttpSession::RespondStatic(const char *path)
+void HttpSession::ProcessStatic(const char *path)
 {
     ByteArray *file = http_server->GetFileByLocation(path);
 
@@ -141,7 +141,7 @@ void HttpSession::ProcessGetRequest()
     if (LOCATION_IS("/")) {
         response = new HttpResponse(http_ok, request->minor_version, keep_alive);
     } else if (LOCATION_STARTS_WITH("/static/")) {
-        RespondStatic(path);
+        ProcessStatic(path);
     } else {
         response = new HttpResponse(http_not_found, request->minor_version, keep_alive);
     }
@@ -150,21 +150,35 @@ void HttpSession::ProcessGetRequest()
 }
 
 
+void HttpSession::ProcessPhotosUpload()
+{
+    LOG_I("Client from %s is trying to upload photos", s_addr);
+
+    char *album_path = CreateWebAlbum();
+    if (album_path) {
+        response = new HttpResponse(http_see_other, request->minor_version, keep_alive);
+        response->AddLocationHeader(album_path);
+    } else {
+        response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
+    }
+}
+
+
+void HttpSession::ProcessAuth()
+{
+    response = new HttpResponse(http_unauthorized, request->minor_version, keep_alive);
+}
+
 void HttpSession::ProcessPostRequest()
 {
     char *path = strndup(request->path, request->path_len);
-    http_status_t code = http_not_found;
 
     if (LOCATION_IS("/upload/photos")) {
-        LOG_I("Client from %s is trying to upload photos", s_addr);
-
-        char *album_path = CreateWebAlbum();
-        if (album_path) code = http_see_other;
-
-        response = new HttpResponse(code, request->minor_version, keep_alive);
-        response->AddLocationHeader(album_path);
+        ProcessPhotosUpload();
+    } else if (LOCATION_IS("/auth")) {
+        ProcessAuth();
     } else {
-        response = new HttpResponse(code, request->minor_version, keep_alive);
+        response = new HttpResponse(http_not_found, request->minor_version, keep_alive);
     }
 
     free(path);

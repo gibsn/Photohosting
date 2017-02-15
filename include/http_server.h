@@ -2,13 +2,13 @@
 #define HTTP_SERVER_H_SENTRY
 
 
-#include "common.h"
 #include "tcp_server.h"
 #include "tcp_session.h"
 
 
 
 struct Config;
+class AuthDriver;
 
 
 class HttpServer: public TcpServer {
@@ -19,6 +19,9 @@ class HttpServer: public TcpServer {
     char *path_to_tmp_files;
 
     char *path_to_css; // relatively to path_to_static
+
+    AuthDriver *auth;
+
 
     virtual TcpSession *CreateNewSession();
 

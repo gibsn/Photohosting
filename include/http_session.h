@@ -14,8 +14,7 @@ typedef enum {
 } request_parser_result_t;
 
 
-class HttpSession: public TcpSessionDriver
-{
+class HttpSession: public TcpSessionDriver {
     HttpServer *http_server;
 
     char *s_addr;
@@ -41,7 +40,9 @@ class HttpSession: public TcpSessionDriver
 
     void Respond();
 
-    void RespondStatic(const char *);
+    void ProcessAuth();
+    void ProcessPhotosUpload();
+    void ProcessStatic(const char *);
 
     char *UploadFile(const char *);
     char *CreateWebAlbum();
