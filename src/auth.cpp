@@ -2,6 +2,7 @@
 
 #include <ctype.h>
 
+#include "common.h"
 #include "log.h"
 
 
@@ -83,7 +84,7 @@ UsersList::~UsersList()
 }
 
 
-void UsersList::Append(char *_login, char *_password)
+void UsersList::Append(const char *_login, const char *_password)
 {
     UsersListNode *new_node = new UsersListNode(_login, _password);
 
@@ -112,6 +113,50 @@ bool UsersList::Check(const char *_login, const char *_password) const
     }
 
     return false;
+}
+
+
+void SessionsList::Append(const char *_sid, const char *_login)
+{
+    SessionsListNode *new_node = new SessionsListNode(_sid, _login);
+
+    if (head == 0) {
+        head = new_node;
+        last = new_node;
+        return;
+    }
+
+    last->next = new_node;
+    last = last->next;
+}
+
+
+const char *SessionsList::GetUserBySession(const char *sid) const
+{
+    SessionsListNode *curr = head;
+    while(curr) {
+        int min_len = MIN(strlen(sid), strlen(head->sid));
+        if (0 == strncmp(sid, curr->sid, min_len)) {
+            return curr->login;
+        }
+
+        curr = curr->next;
+    }
+
+    return NULL;
+}
+
+
+SessionsList::~SessionsList()
+{
+    SessionsListNode *curr = head;
+    SessionsListNode *next = head;
+
+    while (curr) {
+        next = curr->next;
+        delete curr;
+        curr = next;
+    }
 }
 
 
@@ -153,4 +198,49 @@ bool Auth::Check(const char *_login, const char *_password) const
 }
 
 
+char *Auth::NewSession(const char *user)
+{
+    char *sid = gen_random_string(SID_LEN);
 
+    active_sessions.Append(sid, user);
+
+    return sid;
+}
+
+
+const char *Auth::GetUserBySession(const char *sid) const
+{
+    return active_sessions.GetUserBySession(sid);
+}
+
+
+char *Auth::ParseLoginFromReq(const char *body, int body_len)
+{
+    char *body_copy = strndup(body, body_len);
+
+    char *start = strstr(body_copy, "login=");
+    if (!start) return NULL;
+
+    start += sizeof "login=" - 2;
+    char *save_start = start + 1;
+
+    while (isalnum(*++start));
+
+    return strndup(save_start, start - save_start);
+}
+
+
+char *Auth::ParsePasswordFromReq(const char *body, int body_len)
+{
+    char *body_copy = strndup(body, body_len);
+
+    char *start = strstr(body_copy, "password=");
+    if (!start) return NULL;
+
+    start += sizeof "password=" - 2;
+    char *save_start = start + 1;
+
+    while (isalnum(*++start));
+
+    return strndup(save_start, start - save_start);
+}

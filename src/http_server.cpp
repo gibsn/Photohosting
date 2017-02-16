@@ -145,17 +145,29 @@ char *HttpServer::CreateAlbum(char *user, char *archive, char *title, char **pat
 }
 
 
+char *HttpServer::Authorise(const char *user, const char *password)
+{
+    if (auth->Check(user, password)) {
+        return auth->NewSession(user);
+    }
+
+    return NULL;
+}
+
+
 HttpServer::HttpServer()
     : path_to_static(NULL),
     path_to_static_len(0),
-    path_to_tmp_files(NULL)
+    path_to_tmp_files(NULL),
+    auth(NULL)
 {
 }
 
 
-HttpServer::HttpServer(const Config &cfg)
+HttpServer::HttpServer(const Config &cfg, AuthDriver *_auth)
     : TcpServer(cfg),
-    path_to_static_len(0)
+    path_to_static_len(0),
+    auth(_auth)
 {
     path_to_static = strdup(cfg.path_to_static);
     assert(path_to_static);

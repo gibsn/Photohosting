@@ -8,6 +8,7 @@
 
 #include "picohttpparser.h"
 
+#include "auth.h"
 #include "common.h"
 #include "log.h"
 #include "multipart.h"
@@ -86,7 +87,7 @@ bool HttpSession::ProcessRequest()
         goto fin;
         break;
     }
-    // hexdump((uint8_t *)read_buf->data, read_buf->size);
+    hexdump((uint8_t *)read_buf->data, read_buf->size);
     LOG_D("Processing HTTP-request");
 
     if (!ValidateLocation(strndup(request->path, request->path_len))) {
@@ -166,7 +167,27 @@ void HttpSession::ProcessPhotosUpload()
 
 void HttpSession::ProcessAuth()
 {
-    response = new HttpResponse(http_unauthorized, request->minor_version, keep_alive);
+    char *new_sid = NULL;
+    char *user = Auth::ParseLoginFromReq(request->body, request->body_len);
+    char *password = Auth::ParsePasswordFromReq(request->body, request->body_len);
+    if (!user || !password) {
+        response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
+        goto fin;
+    }
+
+    new_sid = http_server->Authorise(user, password);
+    if (!new_sid) {
+        response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
+        goto fin;
+    }
+
+    response = new HttpResponse(http_ok, request->minor_version, keep_alive);
+    response->SetCookie("sid", new_sid);
+
+fin:
+    if (user) free(user);
+    if (password) free(password);
+    if (new_sid) free(new_sid);
 }
 
 void HttpSession::ProcessPostRequest()

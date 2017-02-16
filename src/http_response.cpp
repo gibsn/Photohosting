@@ -178,6 +178,19 @@ void HttpResponse::AddLocationHeader(const char *loc)
 }
 
 
+void HttpResponse::SetCookie(const char *key, const char *value)
+{
+    int header_value_len = strlen(key) + sizeof "=" + strlen(value);
+    char *header_value = (char *)malloc(header_value_len);
+
+    strcpy(header_value, key);
+    strcat(header_value, "=");
+    strcat(header_value, value);
+
+    AddHeader("Set-Cookie", header_value);
+}
+
+
 void HttpResponse::CloseHeaders()
 {
     response = (char *)realloc(response, response_len + strlen("\r\n"));

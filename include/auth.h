@@ -7,6 +7,8 @@
 
 #include "auth_driver.h"
 
+#define SID_LEN 32
+
 
 enum auth_file_parser_state_t {
     new_line,
@@ -36,7 +38,7 @@ struct UsersListNode {
     char *password;
     UsersListNode *next;
 
-    UsersListNode(char *_login, char *_password): next(0) {
+    UsersListNode(const char *_login, const char *_password): next(0) {
         login = strdup(_login);
         password = strdup(_password);
     }
@@ -56,13 +58,44 @@ public:
     UsersList(): head(0), last(0) {}
     ~UsersList();
 
-    void Append(char *_login, char *_password);
+    void Append(const char *_login, const char *_password);
     bool Check(const char *_login, const char *_password) const;
+};
+
+
+struct SessionsListNode {
+    char *sid;
+    char *login;
+    SessionsListNode *next;
+
+    SessionsListNode(const char *_sid, const char *_login): next(0) {
+        sid = strdup(_sid);
+        login = strdup(_login);
+    }
+
+    ~SessionsListNode() {
+        free(sid);
+        free(login);
+    }
+};
+
+
+class SessionsList {
+    SessionsListNode *head;
+    SessionsListNode *last;
+
+public:
+    SessionsList(): head(0), last(0) {}
+    ~SessionsList();
+
+    void Append(const char *_sid, const char *_login);
+    const char *GetUserBySession(const char *sid) const;
 };
 
 
 class Auth: public AuthDriver{
     UsersList users_list;
+    SessionsList active_sessions;
     FILE *file;
 
 public:
@@ -71,6 +104,11 @@ public:
 
     bool Init(const char *filepath);
     bool Check(const char *_login, const char *_password) const;
+    char *NewSession(const char *user);
+    const char *GetUserBySession(const char *sid) const;
+
+    static char *ParseLoginFromReq(const char *body, int body_len);
+    static char *ParsePasswordFromReq(const char *body, int body_len);
 };
 
 #endif

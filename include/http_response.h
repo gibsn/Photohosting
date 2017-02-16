@@ -44,8 +44,9 @@ struct HttpResponse {
     void AddServerHeader();
     void AddConnectionHeader(bool);
 
-    //Response hedaers
+    //Response headers
     void AddLocationHeader(const char *loc);
+    void SetCookie(const char *key, const char *value);
 
     //Entity headers
     void AddContentLengthHeader();

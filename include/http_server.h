@@ -32,13 +32,15 @@ class HttpServer: public TcpServer {
 
 public:
     HttpServer();
-    HttpServer(const Config &);
+    HttpServer(const Config &cfg, AuthDriver *_auth);
     virtual ~HttpServer();
 
     ByteArray *GetFileByLocation(const char *);
 
     char *SaveFile(ByteArray *, char *);
     char *CreateAlbum(char *, char *, char *, char **);
+
+    char *Authorise(const char *user, const char *password);
 };
 
 

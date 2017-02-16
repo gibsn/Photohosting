@@ -24,7 +24,7 @@ int main(int argc, char **argv)
     auth.Init("./users");
 
     LOG_I("Starting server");
-    HttpServer server(cfg);
+    HttpServer server(cfg, &auth);
     server.Init();
     server.ListenAndServe();
 
