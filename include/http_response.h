@@ -65,6 +65,8 @@ public:
     ByteArray *GetResponseByteArray(http_status_t);
 
     void SetBody(ByteArray *);
+
+    void AddDefaultBodies();
 };
 
 

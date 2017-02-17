@@ -28,10 +28,10 @@ struct ByteArray
     int size;
 
     ByteArray() : data(NULL), size(0) {};
-    ByteArray(const char *, int);
+    ByteArray(const char *data, int len);
     ~ByteArray() { if (data) free(data); }
 
-    void Append(const ByteArray *);
+    void Append(const ByteArray *other);
 };
 
 

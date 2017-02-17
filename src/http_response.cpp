@@ -211,3 +211,36 @@ void HttpResponse::AddBody()
         response_len += body_len;
     }
 }
+
+
+void HttpResponse::AddDefaultBodies()
+{
+    const char *str = NULL;
+
+    switch(code) {
+    case http_bad_request:
+        str = "Bad request";
+        break;
+    case http_unauthorized:
+        str = "You are not allowed to do this, please authorise";
+        break;
+    case http_forbidden:
+        str = "You are not allowed to do this, please authorise";
+        break;
+    case http_not_found:
+        str = "Not found";
+        break;
+    case http_internal_error:
+        str = "Internal server error";
+        break;
+    default:
+        ;
+    }
+
+    if (str) {
+        ByteArray _str(str, strlen(str));
+        SetBody(&_str);
+    }
+}
+
+
