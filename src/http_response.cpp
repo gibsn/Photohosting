@@ -218,6 +218,9 @@ void HttpResponse::AddDefaultBodies()
     const char *str = NULL;
 
     switch(code) {
+    case http_ok:
+        str = "OK";
+        break;
     case http_bad_request:
         str = "Bad request";
         break;

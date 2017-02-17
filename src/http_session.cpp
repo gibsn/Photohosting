@@ -289,7 +289,9 @@ ByteArray *HttpSession::GetFileFromRequest(char **name) const
 
 void HttpSession::Respond()
 {
-    response->AddDefaultBodies();
+    if (!response->body) {
+        response->AddDefaultBodies();
+    }
 
     ByteArray *r = response->GetResponseByteArray();
     tcp_session->Send(r);
