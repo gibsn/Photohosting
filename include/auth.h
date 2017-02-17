@@ -25,6 +25,7 @@ class AuthFileParser {
     int buf_idx;
 
 public:
+    AuthFileParser(): file(NULL), buf_idx(0) {};
     AuthFileParser(FILE *_file): state(new_line), file(_file), buf_idx(0) {}
 
     bool CheckEof();
@@ -102,7 +103,7 @@ public:
     Auth(): file(0) {};
     ~Auth() {};
 
-    bool Init(const char *filepath);
+    void Init(const char *filepath);
     bool Check(const char *_login, const char *_password) const;
     char *NewSession(const char *user);
     const char *GetUserBySession(const char *sid) const;

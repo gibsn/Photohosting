@@ -22,6 +22,7 @@ int main(int argc, char **argv)
     Auth auth;
     //TODO: from cfg
     auth.Init("./users");
+    LOG_I("Initialised auth");
 
     LOG_I("Starting server");
     HttpServer server(cfg, &auth);

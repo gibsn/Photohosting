@@ -160,35 +160,41 @@ SessionsList::~SessionsList()
 }
 
 
-bool Auth::Init(const char *filepath)
+void Auth::Init(const char *filepath)
 {
+    char *login;
+    char *password;
+    AuthFileParser parser;
+
     file = fopen(filepath, "r");
     if (!file) {
         LOG_E("Could not open auth file %s", filepath);
-        return false;
+        goto fin;
     }
 
-    AuthFileParser parser(file);
+    parser =  AuthFileParser(file);
     while (!parser.CheckEof()) {
-        char *login = parser.ParseLogin();
+        login = parser.ParseLogin();
         if (!login) {
             LOG_E("auth: error parsing login");
-            return false;
+            goto fin;
         }
 
-        char *password = parser.ParsePassword();
+        password = parser.ParsePassword();
         if (!password) {
             LOG_E("auth: error parsing password");
-            return false;
+            goto fin;
         }
 
         users_list.Append(login, password);
     }
 
     fclose(file);
-    LOG_I("Initialised auth");
+    return;
 
-    return true;
+fin:
+    LOG_E("Could not initialise auth");
+    exit(1);
 }
 
 
