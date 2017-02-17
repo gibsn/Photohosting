@@ -12,7 +12,7 @@
 #include "log.h"
 
 
-char *make_user_path(char *path_to_static, char *user)
+char *make_user_path(const char *path_to_static, const char *user)
 {
     int user_path_len = strlen(path_to_static) + sizeof "/" - 1;
     user_path_len += strlen(user) + sizeof "/";
@@ -28,7 +28,7 @@ char *make_user_path(char *path_to_static, char *user)
 }
 
 
-static char *make_path_to_unpack(char *user_path, char *random_id)
+static char *make_path_to_unpack(const char *user_path, const char *random_id)
 {
     int path_to_unpack_len = strlen(user_path) + sizeof "srcs/" - 1;
     path_to_unpack_len += strlen(random_id) + sizeof "/";
@@ -45,7 +45,7 @@ static char *make_path_to_unpack(char *user_path, char *random_id)
 }
 
 
-static char *make_path_to_thumbs(char *user_path, char *random_id)
+static char *make_path_to_thumbs(const char *user_path, const char *random_id)
 {
     int path_to_thumbs_len = strlen(user_path) + sizeof "thmbs/" - 1;
     path_to_thumbs_len += strlen(random_id) + sizeof "/";
@@ -62,7 +62,7 @@ static char *make_path_to_thumbs(char *user_path, char *random_id)
 }
 
 
-static char *make_path_to_webpage(char *user_path, char *random_id)
+static char *make_path_to_webpage(const char *user_path, const char *random_id)
 {
     int path_to_webpage_len = strlen(user_path) + sizeof "/" - 1;
     path_to_webpage_len += strlen(random_id) + sizeof ".html";
@@ -77,7 +77,7 @@ static char *make_path_to_webpage(char *user_path, char *random_id)
 }
 
 
-char *make_path_to_css(char *path_to_css)
+char *make_path_to_css(const char *path_to_css)
 {
     int path_to_css_file_len = sizeof "/static/" - 1;
     path_to_css_file_len += strlen(path_to_css) + sizeof "/blue.css";
@@ -92,7 +92,7 @@ char *make_path_to_css(char *path_to_css)
 }
 
 
-static char *make_r_path_to_srcs(char *user, char *random_id)
+static char *make_r_path_to_srcs(const char *user, const char *random_id)
 {
     int r_path_to_srcs_len = sizeof "/static/" - 1 + strlen(user);
     r_path_to_srcs_len +=  sizeof "/srcs/" - 1 + strlen(random_id) + sizeof "/";
@@ -110,7 +110,7 @@ static char *make_r_path_to_srcs(char *user, char *random_id)
 }
 
 
-static char *make_r_path_to_thmbs(char *user, char *random_id)
+static char *make_r_path_to_thmbs(const char *user, const char *random_id)
 {
     int r_path_to_thmbs_len = sizeof "/static/" - 1 + strlen(user);
     r_path_to_thmbs_len +=  sizeof "/thmbs/" - 1 + strlen(random_id) + sizeof "/";
@@ -129,7 +129,7 @@ static char *make_r_path_to_thmbs(char *user, char *random_id)
 }
 
 
-char *make_r_path_to_webpage(char *user, char *random_id)
+char *make_r_path_to_webpage(const char *user, const char *random_id)
 {
     int r_path_to_webpage_len = sizeof "/static/" - 1 + strlen(user);
     r_path_to_webpage_len +=  sizeof "/" - 1 + strlen(random_id) + sizeof ".html";
@@ -161,7 +161,10 @@ void album_creator_debug(const WebAlbumParams &cfg)
 }
 
 
-WebAlbumParams album_params_helper(char *user, char *user_path, char *random_id)
+WebAlbumParams album_params_helper(
+        const char *user,
+        const char *user_path,
+        const char *random_id)
 {
     WebAlbumParams cfg;
 
@@ -170,8 +173,8 @@ WebAlbumParams album_params_helper(char *user, char *user_path, char *random_id)
     cfg.path_to_webpage = make_path_to_webpage(user_path, random_id);
 
 
-    cfg.relative_path_to_originals = make_r_path_to_srcs((char *)user, random_id);
-    cfg.relative_path_to_thumbnails = make_r_path_to_thmbs((char *)user, random_id);
+    cfg.relative_path_to_originals = make_r_path_to_srcs(user, random_id);
+    cfg.relative_path_to_thumbnails = make_r_path_to_thmbs(user, random_id);
 
     return cfg;
 }
@@ -244,8 +247,5 @@ int clean_paths(const WebAlbumParams &cfg)
 
     return 0;
 }
-
-
-
 
 

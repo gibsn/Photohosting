@@ -21,11 +21,15 @@ struct HttpRequest {
     int headers_len;
     size_t n_headers;
 
+    char *sid;
+
     char *body;
     int body_len;
 
     HttpRequest();
     ~HttpRequest();
+
+    void ParseCookie(const char *value, int value_len);
 
     char *GetMultipartBondary() const;
 };

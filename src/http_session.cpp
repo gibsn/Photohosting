@@ -87,7 +87,7 @@ bool HttpSession::ProcessRequest()
         goto fin;
         break;
     }
-    hexdump((uint8_t *)read_buf->data, read_buf->size);
+    // hexdump((uint8_t *)read_buf->data, read_buf->size);
     LOG_D("Processing HTTP-request");
 
     if (!ValidateLocation(strndup(request->path, request->path_len))) {
@@ -155,7 +155,14 @@ void HttpSession::ProcessPhotosUpload()
 {
     LOG_I("Client from %s is trying to upload photos", s_addr);
 
-    char *album_path = CreateWebAlbum();
+    const char *user = http_server->GetUserBySession(request->sid);
+    if (!user) {
+        LOG_I("Client from %s is not authorized, responding 403", s_addr);
+        response = new HttpResponse(http_forbidden, request->minor_version, keep_alive);
+        return;
+    }
+
+    char *album_path = CreateWebAlbum(user, "test_album");
     if (album_path) {
         response = new HttpResponse(http_see_other, request->minor_version, keep_alive);
         response->AddLocationHeader(album_path);
@@ -209,12 +216,9 @@ void HttpSession::ProcessPostRequest()
 #undef LOCATION_STARTS_WITH
 
 
-char *HttpSession::CreateWebAlbum()
+char *HttpSession::CreateWebAlbum(const char *user, const char *page_title)
 {
     char *file_path = NULL;
-
-    const char *user = "test";
-    const char *page_title = "test_album";
 
     char *err = NULL;
     char *album_path = NULL;
@@ -224,7 +228,7 @@ char *HttpSession::CreateWebAlbum()
     // TODO: make auth
     // TODO: get page title from somewhere
     LOG_I("Creating new album for user \'%s\'", user);
-    err = http_server->CreateAlbum((char *)user, file_path, (char *)page_title, &album_path);
+    err = http_server->CreateAlbum(user, file_path, page_title, &album_path);
     if (err) {
         LOG_E("WebAlbumCreator: %s", err);
         goto fin;
@@ -359,6 +363,8 @@ void HttpSession::ProcessHeaders()
                 tolower(headers[i].value[0]) == 'k';
         } else if (CMP_HEADER("Content-Length")) {
             request->body_len = strtol(headers[i].value, NULL, 10);
+        } else if (CMP_HEADER("Cookie")) {
+            request->ParseCookie(headers[i].value, headers[i].value_len);
         }
     }
 }

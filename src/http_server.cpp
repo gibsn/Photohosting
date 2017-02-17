@@ -99,14 +99,18 @@ err:
 }
 
 
-char *HttpServer::CreateAlbum(char *user, char *archive, char *title, char **path)
+char *HttpServer::CreateAlbum(
+        const char *user,
+        const char *archive,
+        const char *title,
+        char **path)
 {
     int random_id_len = 16;
     char *random_id = gen_random_string(random_id_len);
 
-    char *user_path = make_user_path(path_to_static, (char *)user);
+    char *user_path = make_user_path(path_to_static, user);
 
-    WebAlbumParams cfg = album_params_helper((char *)user, user_path, random_id);
+    WebAlbumParams cfg = album_params_helper(user, user_path, random_id);
     cfg.path_to_archive = archive;
     cfg.web_page_title = title;
     cfg.path_to_css = make_path_to_css(path_to_css);
@@ -152,6 +156,10 @@ char *HttpServer::Authorise(const char *user, const char *password)
     }
 
     return NULL;
+}
+
+const char *HttpServer::GetUserBySession(const char *sid) {
+    return auth->GetUserBySession(sid);
 }
 
 
