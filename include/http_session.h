@@ -14,7 +14,7 @@ typedef enum {
 } request_parser_result_t;
 
 
-class HttpSession: public TcpSessionDriver {
+class HttpSession: public AppLayerDriver {
     HttpServer *http_server;
 
     char *s_addr;

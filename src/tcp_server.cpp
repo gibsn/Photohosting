@@ -178,12 +178,6 @@ void TcpServer::Serve()
 }
 
 
-void TcpServer::RequestWrite(int fd)
-{
-    FD_SET(fd, &so.writefds);
-}
-
-
 void TcpServer::CloseSession(TcpSession *session)
 {
     int i;
