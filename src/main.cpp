@@ -27,6 +27,11 @@ int main(int argc, char **argv)
     LOG_I("Starting server");
     HttpServer server(cfg, &auth);
     server.Init();
+
+    if (cfg.runas) {
+        if (!change_user(cfg.runas)) exit(-1);
+    }
+
     server.ListenAndServe();
 
     return 0;

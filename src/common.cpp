@@ -1,14 +1,23 @@
 #include "common.h"
 
 #include <arpa/inet.h>
-#include <errno.h>
-#include <dirent.h>
-#include <fcntl.h>
 #include <ctype.h>
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <grp.h>
+#include <pwd.h>
 #include <stdio.h>
 #include <string.h>
+
+#ifdef __linux__
+#include <sys/prctl.h>
+#endif
+
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
+#include <uuid/uuid.h>
 
 #include "log.h"
 
@@ -19,7 +28,8 @@ Config::Config()
     n_workers(0),
     max_log_level(-1),
     path_to_static(NULL),
-    path_to_tmp_files(NULL)
+    path_to_tmp_files(NULL),
+    runas(NULL)
 {}
 
 
@@ -28,6 +38,7 @@ Config::~Config()
     if (addr) free(addr);
     if (path_to_static) free(path_to_static);
     if (path_to_tmp_files) free(path_to_tmp_files);
+    if (runas) free(runas);
 }
 
 
@@ -108,6 +119,7 @@ static void print_help()
         "  -n [int]: amount of workers\n"
         "  -l [0-7]: level of logging\n"
         "  -s [string]: path to static files\n"
+        "  -r [user:group]: setuid/setgid after binding\n"
     );
 }
 
@@ -122,7 +134,7 @@ bool process_cmd_arguments(int argc, char **argv, Config &cfg)
     int c;
 
     //TODO: fix strtol bug
-    while ((c = getopt(argc, argv, "hi:p:n:l:s:")) != -1) {
+    while ((c = getopt(argc, argv, "hi:p:n:l:s:r:")) != -1) {
         switch(c) {
         case 'i':
             cfg.addr = strdup(optarg);
@@ -158,6 +170,14 @@ bool process_cmd_arguments(int argc, char **argv, Config &cfg)
             cfg.path_to_static = strdup(optarg);
             if (!cfg.path_to_static) {
                 fprintf(stderr, "Wrong path to static files (%s), must be string\n",
+                    optarg);
+                return false;
+            }
+            break;
+        case 'r':
+            cfg.runas = strdup(optarg);
+            if (!cfg.runas) {
+                fprintf(stderr, "Wrong runas option (%s), must be user:group\n",
                     optarg);
                 return false;
             }
@@ -320,4 +340,56 @@ int rm_rf(const char *path)
     if (dir) closedir(dir);
 
     return 0;
+}
+
+
+bool change_user(const char *runas)
+{
+    bool ret = false;
+
+	struct passwd *pwd;
+    struct group *grp;
+    char *username, *groupname;
+
+    char *_runas = NULL;
+    _runas = strdup(runas);
+
+	char *colon = strchr(_runas, ':');
+	if (colon == NULL) {
+        LOG_E("Wrong runas option %s", runas);
+        goto fin;
+    }
+
+	*colon = '\0';
+
+	username = _runas;
+	groupname = colon + 1;
+
+    pwd = getpwnam(username);
+	if (pwd == NULL) {
+		LOG_E("Wrong username %s", username);
+        goto fin;
+    }
+
+    grp = getgrnam(groupname);
+	if (grp == NULL) {
+		LOG_E("Wrong groupname %s", groupname);
+        goto fin;
+    }
+
+	if (setgid(grp->gr_gid) || setuid(pwd->pw_uid)) {
+		LOG_E("setgid/setuid failed: %s", strerror(errno));
+        goto fin;
+    }
+
+#ifdef __linux__
+    // Linux will prohibit creating core dumps after the uid has been changed
+	prctl(PR_SET_DUMPABLE, 1, 0, 0, 0);
+#endif
+
+    ret = true;
+
+fin:
+    if (_runas) free(_runas);
+    return ret;
 }

@@ -14,6 +14,7 @@ struct Config
     char *path_to_static;
     char *path_to_tmp_files;
     char *path_to_css;
+    char *runas;
 
     Config();
     ~Config();
@@ -42,6 +43,7 @@ bool file_exists(const char *);
 char *gen_random_string(int);
 int mkdir_p(const char *, mode_t);
 int rm_rf(const char *path);
+bool change_user(const char *runas);
 
 
 #define MIN(a,b) a < b ? a : b
