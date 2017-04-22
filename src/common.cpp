@@ -29,6 +29,7 @@ Config::Config()
     path_to_static(NULL),
     path_to_tmp_files(NULL),
     path_to_tokens(NULL),
+    path_to_pwd(NULL),
     runas(NULL)
 {}
 
@@ -39,6 +40,7 @@ Config::~Config()
     if (path_to_static) free(path_to_static);
     if (path_to_tmp_files) free(path_to_tmp_files);
     if (path_to_tokens) free(path_to_tokens);
+    if (path_to_pwd) free(path_to_pwd);
     if (runas) free(runas);
 }
 
@@ -134,6 +136,7 @@ static void print_help()
         "  -t [string]: path to session tokens\n"
         "  -s [string]: path to static files\n"
         "  -r [user:group]: setuid/setgid after binding\n"
+        "  -u [string]: file with passwords\n"
     );
 }
 
@@ -148,7 +151,7 @@ bool process_cmd_arguments(int argc, char **argv, Config &cfg)
     int c;
 
     //TODO: fix strtol bug
-    while ((c = getopt(argc, argv, "hi:p:n:l:s:r:")) != -1) {
+    while ((c = getopt(argc, argv, "hi:p:n:l:s:r:t:u:")) != -1) {
         switch(c) {
         case 'i':
             cfg.addr = strdup(optarg);
@@ -192,6 +195,22 @@ bool process_cmd_arguments(int argc, char **argv, Config &cfg)
             cfg.runas = strdup(optarg);
             if (!cfg.runas) {
                 fprintf(stderr, "Wrong runas option (%s), must be user:group\n",
+                    optarg);
+                return false;
+            }
+            break;
+        case 't':
+            cfg.path_to_tokens = strdup(optarg);
+            if (!cfg.path_to_tokens) {
+                fprintf(stderr, "Wrong path to tokens (%s), must be string\n",
+                    optarg);
+                return false;
+            }
+            break;
+        case 'u':
+            cfg.path_to_pwd = strdup(optarg);
+            if (!cfg.path_to_pwd) {
+                fprintf(stderr, "Wrong path to file with passwords (%s), must be string\n",
                     optarg);
                 return false;
             }

@@ -20,8 +20,7 @@ int main(int argc, char **argv)
     LOG_I("Initialised logging");
 
     Auth auth;
-    //TODO: from cfg
-    auth.Init("./users", cfg.path_to_tokens);
+    auth.Init(cfg.path_to_pwd, cfg.path_to_tokens);
     LOG_I("Initialised auth");
 
     LOG_I("Starting server");

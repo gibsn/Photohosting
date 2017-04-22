@@ -15,6 +15,7 @@ struct Config
     char *path_to_tmp_files;
     char *path_to_css;
     char *path_to_tokens;
+    char *path_to_pwd;
     char *runas;
 
     Config();
