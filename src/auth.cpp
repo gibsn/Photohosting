@@ -1,6 +1,10 @@
 #include "auth.h"
 
+#include <assert.h>
 #include <ctype.h>
+#include <errno.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #include "common.h"
 #include "log.h"
@@ -160,51 +164,37 @@ SessionsList::~SessionsList()
 }
 
 
-void Auth::Init(const char *filepath)
+void AuthSlave::ServeAuth(int read_fd, int write_fd)
 {
-    char *login;
-    char *password;
-    AuthFileParser parser;
+    LOG_I("Auth service has been initialised successfully");
 
-    file = fopen(filepath, "r");
-    if (!file) {
-        LOG_E("Could not open auth file %s", filepath);
-        goto fin;
-    }
+    auth_task_t task_type;
+    while (true) {
+        int n = read(read_fd, &task_type, sizeof(task_type));
+        assert(n == sizeof(task_type));
 
-    parser =  AuthFileParser(file);
-    while (!parser.CheckEof()) {
-        login = parser.ParseLogin();
-        if (!login) {
-            LOG_E("auth: error parsing login");
-            goto fin;
+        switch (task_type) {
+            case check:
+                break;
+            case new_session:
+                break;
+            case user_by_session:
+                break;
         }
 
-        password = parser.ParsePassword();
-        if (!password) {
-            LOG_E("auth: error parsing password");
-            goto fin;
-        }
-
-        users_list.Append(login, password);
+        // n = write(write_fd,,);
     }
-
-    fclose(file);
-    return;
-
-fin:
-    LOG_E("Could not initialise auth");
-    exit(1);
 }
 
 
-bool Auth::Check(const char *_login, const char *_password) const
+bool AuthSlave::Check(const char *_login, const char *_password) const
 {
+
     return users_list.Check(_login, _password);
 }
 
 
-char *Auth::NewSession(const char *user)
+char *AuthSlave::NewSession(const char *user)
 {
     char *sid = gen_random_string(SID_LEN);
 
@@ -214,9 +204,110 @@ char *Auth::NewSession(const char *user)
 }
 
 
-const char *Auth::GetUserBySession(const char *sid) const
+const char *AuthSlave::GetUserBySession(const char *sid) const
 {
     return active_sessions.GetUserBySession(sid);
+}
+
+
+bool AuthSlave::ParseFile(const char *filepath)
+{
+    char *login;
+    char *password;
+    AuthFileParser parser;
+
+    FILE *file = fopen(filepath, "r");
+    if (!file) {
+        LOG_E("auth: could not open file %s", filepath);
+        return false;
+    }
+
+    parser = AuthFileParser(file);
+    while (!parser.CheckEof()) {
+        login = parser.ParseLogin();
+        if (!login) {
+            LOG_E("auth: error parsing login");
+            return false;
+        }
+
+        password = parser.ParsePassword();
+        if (!password) {
+            LOG_E("auth: error parsing password");
+            return false;
+        }
+
+        users_list.Append(login, password);
+    }
+
+    fclose(file);
+
+    return true;
+}
+
+
+void Auth::Init(const char *filepath)
+{
+    int n;
+    int pipe1[2], pipe2[2];
+    if (pipe(pipe1) || pipe(pipe2)) {
+        LOG_E("here");
+        goto fin;
+    }
+
+    n = fork();
+    if (n == 0) {
+        if (!slave.ParseFile(filepath)) exit(-1);
+
+        n = fork();
+        if (n == 0) {
+            close(pipe1[1]);
+            close(pipe2[0]);
+
+            slave.ServeAuth(pipe1[0], pipe2[1]);
+        } else if (n == -1) {
+            exit(-1);
+        }
+
+        exit(0);
+    } else if (n == -1) {
+        goto fin;
+    }
+
+    int status;
+    waitpid(n, &status, 0);
+    if (WEXITSTATUS(status) != 0) {
+        goto fin;
+    }
+
+    write_fd = pipe1[1];
+    close(pipe1[0]);
+
+    read_fd = pipe2[0];
+    close(pipe2[1]);
+
+    return;
+
+fin:
+    LOG_E("auth: %s", strerror(errno));
+    exit(-1);
+}
+
+
+bool Auth::Check(const char *_login, const char *_password) const
+{
+    return true;
+}
+
+
+char *Auth::NewSession(const char *user)
+{
+    return NULL;
+}
+
+
+const char *Auth::GetUserBySession(const char *sid) const
+{
+    return NULL;
 }
 
 

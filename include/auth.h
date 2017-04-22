@@ -94,16 +94,39 @@ public:
 };
 
 
-class Auth: public AuthDriver{
+typedef enum {
+    check,
+    new_session,
+    user_by_session
+} auth_task_t;
+
+
+class AuthSlave {
     UsersList users_list;
     SessionsList active_sessions;
-    FILE *file;
+
+    bool Check(const char *_login, const char *_password) const;
+    char *NewSession(const char *user);
+    const char *GetUserBySession(const char *sid) const;
 
 public:
-    Auth(): file(0) {};
+    bool ParseFile(const char *filepath);
+    void ServeAuth(int read_fd, int write_fd);
+};
+
+
+class Auth: public AuthDriver{
+    AuthSlave slave;
+
+    int read_fd;
+    int write_fd;
+
+public:
+    Auth() {};
     ~Auth() {};
 
     void Init(const char *filepath);
+
     bool Check(const char *_login, const char *_password) const;
     char *NewSession(const char *user);
     const char *GetUserBySession(const char *sid) const;
