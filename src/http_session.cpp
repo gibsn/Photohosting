@@ -189,6 +189,7 @@ void HttpSession::ProcessAuth()
     new_sid = http_server->Authorise(user, password);
     if (!new_sid) {
         response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
+        LOG_I("Client from %s failed to authorise as user %s", s_addr, user);
         goto fin;
     }
 

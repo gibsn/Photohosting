@@ -52,7 +52,7 @@ class TcpServer: public SelectLoopDriver {
     void ProcessRead(const fd_set &readfds, TcpSession *session);
     void ProcessWrite(const fd_set &writefds, TcpSession *session);
 
-    void SetWantToWrite(int fd) { FD_SET(fd, &so.writefds); }
+    void RequestWriteForFd(int fd) { FD_SET(fd, &so.writefds); }
 
 protected:
     virtual TcpSession *CreateNewSession();

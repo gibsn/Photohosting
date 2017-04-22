@@ -25,6 +25,7 @@ class TcpSession
 
     char *write_buf;
     int write_buf_len;
+    int write_buf_offset;
 
     char *s_addr;
 
@@ -51,6 +52,7 @@ public:
     void SetSessionDriver(AppLayerDriver *_sd) { session_driver = _sd; }
 
     void TruncateReadBuf();
+    void TruncateWriteBuf();
 };
 
 

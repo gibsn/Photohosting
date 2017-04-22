@@ -7,7 +7,7 @@ class SelectLoopDriver
 public:
     virtual ~SelectLoopDriver() {};
 
-    virtual void SetWantToWrite(int fd) = 0;
+    virtual void RequestWriteForFd(int fd) = 0;
 };
 
 

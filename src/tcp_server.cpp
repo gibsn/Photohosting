@@ -136,6 +136,8 @@ void TcpServer::ProcessRead(const fd_set &readfds, TcpSession *session)
 void TcpServer::ProcessWrite(const fd_set &writefds, TcpSession *session)
 {
     if (FD_ISSET(session->GetFd(), &writefds)) {
+        FD_CLR(session->GetFd(), &so.writefds);
+
         LOG_D("Sending data to %s (%d)",
             session->GetSAddr(), session->GetFd());
 
@@ -146,8 +148,6 @@ void TcpServer::ProcessWrite(const fd_set &writefds, TcpSession *session)
 
         LOG_D("Successfully sent data to %s (%d)",
             session->GetSAddr(), session->GetFd());
-
-        FD_CLR(session->GetFd(), &so.writefds);
 
         if (session->GetWantToClose()) {
             CloseSession(session);

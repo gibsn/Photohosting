@@ -17,6 +17,7 @@ TcpSession::TcpSession()
     read_buf_len(0),
     write_buf(NULL),
     write_buf_len(0),
+    write_buf_offset(0),
     s_addr(NULL),
     want_to_close(false)
 {
@@ -30,6 +31,7 @@ TcpSession::TcpSession(int _fd, char *_s_addr, SelectLoopDriver *_sd)
     read_buf_len(0),
     write_buf(NULL),
     write_buf_len(0),
+    write_buf_offset(0),
     s_addr(NULL),
     want_to_close(false)
 {
@@ -74,6 +76,15 @@ void TcpSession::TruncateReadBuf()
 }
 
 
+void TcpSession::TruncateWriteBuf()
+{
+    free(write_buf);
+    write_buf = NULL;
+    write_buf_len = 0;
+    write_buf_offset = 0;
+}
+
+
 bool TcpSession::ReadToBuf()
 {
     int n = read(fd, read_buf + read_buf_len, READ_BUF_SIZE - read_buf_len);
@@ -96,29 +107,22 @@ bool TcpSession::ReadToBuf()
 
 bool TcpSession::Flush()
 {
-    int ret = true;
-    int offset = 0;
-    int n;
-    while (write_buf_len != 0) {
-        n = write(fd, write_buf + offset, write_buf_len);
+    int n = write(fd, write_buf + write_buf_offset, write_buf_len - write_buf_offset);
 
-        if (n <= 0) {
-            perror("write");
-            LOG_E("Some error occurred while writing to %s (%d)", s_addr, fd);
-            ret = false;
-            break;
-        }
-
-        offset += n;
-        write_buf_len -= n;
+    if (n <= 0) {
+        LOG_E("Some error occurred while writing to %s (%d): %s", s_addr, fd, strerror(errno));
+        return false;
     }
 
-    free(write_buf);
+    write_buf_offset += n;
 
-    write_buf = NULL;
-    write_buf_len = 0;
+    if (write_buf_offset == write_buf_len) {
+        TruncateWriteBuf();
+    } else {
+        select_driver->RequestWriteForFd(fd);
+    }
 
-    return ret;
+    return true;
 }
 
 
@@ -133,7 +137,7 @@ void TcpSession::Send(ByteArray *buf)
     write_buf_len = buf->size;
     write_buf = (char *)malloc(buf->size);
     memcpy(write_buf, buf->data, buf->size);
-    select_driver->SetWantToWrite(fd);
+    select_driver->RequestWriteForFd(fd);
 }
 
 
