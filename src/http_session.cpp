@@ -204,6 +204,24 @@ fin:
     if (new_sid) free(new_sid);
 }
 
+
+void HttpSession::ProcessLogout()
+{
+    char *user = http_server->GetUserBySession(request->sid);
+
+    if (http_server->Logout(request->sid)) {
+        LOG_I("User %s has signed out from %s", user, s_addr);
+        response = new HttpResponse(http_ok, request->minor_version, keep_alive);
+        response->SetCookie("sid", "");
+    } else {
+        LOG_E("Could not log out user %s", user);
+        response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
+    }
+
+    free(user);
+}
+
+
 void HttpSession::ProcessPostRequest()
 {
     char *path = strndup(request->path, request->path_len);
@@ -212,6 +230,8 @@ void HttpSession::ProcessPostRequest()
         ProcessPhotosUpload();
     } else if (LOCATION_IS("/auth")) {
         ProcessAuth();
+    } else if (LOCATION_IS("/logout")) {
+        ProcessLogout();
     } else {
         response = new HttpResponse(http_not_found, request->minor_version, keep_alive);
     }

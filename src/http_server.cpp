@@ -156,7 +156,16 @@ char *HttpServer::Authorise(const char *user, const char *password)
     return NULL;
 }
 
+
+bool HttpServer::Logout(const char *sid)
+{
+    return auth->DeleteSession(sid);
+}
+
+
 char *HttpServer::GetUserBySession(const char *sid) {
+    if (*sid == '\0') return NULL;
+
     return auth->GetUserBySession(sid);
 }
 

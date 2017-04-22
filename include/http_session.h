@@ -41,6 +41,8 @@ class HttpSession: public AppLayerDriver {
     void Respond();
 
     void ProcessAuth();
+    void ProcessLogout();
+
     void ProcessPhotosUpload();
     void ProcessStatic(const char *);
 

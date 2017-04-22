@@ -239,6 +239,25 @@ char *Auth::NewSession(const char *user)
 }
 
 
+bool Auth::DeleteSession(const char *sid)
+{
+    char *path = (char *)malloc(strlen(tokens_path) + sizeof "/" + SID_LEN);
+    memcpy(path, tokens_path, strlen(tokens_path) + 1);
+    strcat(path, "/");
+    strcat(path, sid);
+
+    bool ret = true;
+    if (remove(path)) {
+        LOG_E("Could not delete session %s: %s", sid, strerror(errno));
+        ret = false;
+    }
+
+    if (path) free(path);
+
+    return ret;
+}
+
+
 char *Auth::GetUserBySession(const char *sid) const
 {
     char *ret = NULL;

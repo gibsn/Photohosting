@@ -5,7 +5,8 @@
 class AuthDriver {
 public:
     virtual bool Check(const char *_login, const char *password) const = 0;
-    virtual char *NewSession(const char *user) =  0;
+    virtual char *NewSession(const char *user) = 0;
+    virtual bool DeleteSession(const char *sid) = 0;
     virtual char *GetUserBySession(const char *sid) const = 0;
 };
 

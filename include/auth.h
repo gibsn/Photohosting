@@ -107,6 +107,7 @@ public:
 
     bool Check(const char *_login, const char *_password) const;
     char *NewSession(const char *user);
+    bool DeleteSession(const char *sid);
     char *GetUserBySession(const char *sid) const;
 
     static char *ParseLoginFromReq(const char *body, int body_len);

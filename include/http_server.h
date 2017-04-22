@@ -38,6 +38,7 @@ public:
 
     char *Authorise(const char *user, const char *password);
     char *GetUserBySession(const char *sid);
+    bool Logout(const char *sid);
 };
 
 
