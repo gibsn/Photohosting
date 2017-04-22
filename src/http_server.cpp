@@ -81,7 +81,7 @@ char *HttpServer::SaveFile(ByteArray *file, char *name)
     try {
         if (fd == -1) {
             LOG_E("Could not save file %s: %s", full_path, strerror(errno));
-            throw UnknownWriteError();
+            throw UnknownWriteError(strerror(errno));
         }
 
         int n = write(fd, file->data, file->size);
@@ -90,7 +90,7 @@ char *HttpServer::SaveFile(ByteArray *file, char *name)
             LOG_E("Could not save file %s: %s", full_path, strerror(errno));
             if (errno == ENOSPC) throw NoSpace();
 
-            throw UnknownWriteError();
+            throw UnknownWriteError(strerror(errno));
         }
     }
     catch (PhotohostingEx &) {
@@ -156,7 +156,7 @@ char *HttpServer::Authorise(const char *user, const char *password)
     return NULL;
 }
 
-const char *HttpServer::GetUserBySession(const char *sid) {
+char *HttpServer::GetUserBySession(const char *sid) {
     return auth->GetUserBySession(sid);
 }
 

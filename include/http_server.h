@@ -12,7 +12,6 @@ class AuthDriver;
 
 
 class HttpServer: public TcpServer {
-
     char *path_to_static;
     int path_to_static_len; // not to use strlen every time
 
@@ -22,13 +21,9 @@ class HttpServer: public TcpServer {
 
     AuthDriver *auth;
 
-
     virtual TcpSession *CreateNewSession();
 
     char *AddPathToStaticPrefix(const char *) const;
-
-    void ProcessGetRequest();
-    void ProcessPostRequest();
 
 public:
     HttpServer();
@@ -42,7 +37,7 @@ public:
     char *CreateAlbum(const char *user, const char *archive, const char *title);
 
     char *Authorise(const char *user, const char *password);
-    const char *GetUserBySession(const char *sid);
+    char *GetUserBySession(const char *sid);
 };
 
 

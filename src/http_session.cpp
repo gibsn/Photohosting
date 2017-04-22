@@ -156,7 +156,7 @@ void HttpSession::ProcessPhotosUpload()
 {
     LOG_I("Client from %s is trying to upload photos", s_addr);
 
-    const char *user = http_server->GetUserBySession(request->sid);
+    char *user = http_server->GetUserBySession(request->sid);
     if (!user) {
         LOG_I("Client from %s is not authorised, responding 403", s_addr);
         response = new HttpResponse(http_forbidden, request->minor_version, keep_alive);

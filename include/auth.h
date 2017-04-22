@@ -96,17 +96,18 @@ public:
 
 class Auth: public AuthDriver{
     UsersList users_list;
-    SessionsList active_sessions;
-    FILE *file;
+
+    char *tokens_path;
 
 public:
-    Auth(): file(0) {};
-    ~Auth() {};
+    Auth(): tokens_path(NULL) {};
+    ~Auth() { if (tokens_path) free(tokens_path); };
 
-    void Init(const char *filepath);
+    void Init(const char *filepath, const char *path_to_tokens);
+
     bool Check(const char *_login, const char *_password) const;
     char *NewSession(const char *user);
-    const char *GetUserBySession(const char *sid) const;
+    char *GetUserBySession(const char *sid) const;
 
     static char *ParseLoginFromReq(const char *body, int body_len);
     static char *ParsePasswordFromReq(const char *body, int body_len);

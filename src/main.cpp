@@ -21,7 +21,7 @@ int main(int argc, char **argv)
 
     Auth auth;
     //TODO: from cfg
-    auth.Init("./users");
+    auth.Init("./users", cfg.path_to_tokens);
     LOG_I("Initialised auth");
 
     LOG_I("Starting server");

@@ -28,6 +28,7 @@ Config::Config()
     max_log_level(-1),
     path_to_static(NULL),
     path_to_tmp_files(NULL),
+    path_to_tokens(NULL),
     runas(NULL)
 {}
 
@@ -37,6 +38,7 @@ Config::~Config()
     if (addr) free(addr);
     if (path_to_static) free(path_to_static);
     if (path_to_tmp_files) free(path_to_tmp_files);
+    if (path_to_tokens) free(path_to_tokens);
     if (runas) free(runas);
 }
 
@@ -84,6 +86,13 @@ void Config::Check()
             "using the current directory by default\n");
         path_to_tmp_files = strdup(".");
     }
+
+    if (!path_to_tokens) {
+        fprintf (stderr,
+            "You have not specified path to the session tokens, "
+            "using the current directory by default\n");
+        path_to_tokens = strdup(".");
+    }
 }
 
 
@@ -122,6 +131,7 @@ static void print_help()
         "  -p [int]: port to listen on\n"
         "  -n [int]: amount of workers\n"
         "  -l [0-7]: level of logging\n"
+        "  -t [string]: path to session tokens\n"
         "  -s [string]: path to static files\n"
         "  -r [user:group]: setuid/setgid after binding\n"
     );

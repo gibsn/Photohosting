@@ -19,10 +19,26 @@ public:
     virtual const char *GetErrMsg() const { return text; }
 };
 
-class SystemEx: public PhotohostingEx {};
+class SystemEx: public PhotohostingEx {
+
+public:
+    SystemEx() {};
+    SystemEx(const char *t): PhotohostingEx(t) {};
+};
 
 class NoSpace: public SystemEx {};
-class UnknownWriteError: public SystemEx {};
+
+class UnknownWriteError: public SystemEx {
+
+public:
+    UnknownWriteError(const char *t): SystemEx(t) {};
+};
+
+class UnknownReadError: public SystemEx {
+
+public:
+    UnknownReadError(const char *t): SystemEx(t) {};
+};
 
 class UserEx : public PhotohostingEx {};
 
