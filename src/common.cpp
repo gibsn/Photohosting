@@ -89,7 +89,8 @@ void Config::Check()
 
 ByteArray::ByteArray(const char *_data, int _size)
     : data(NULL),
-    size(_size)
+    size(_size),
+    cap(_size)
 {
     if (_data) {
         data = (char *)malloc(_size);
@@ -101,7 +102,11 @@ ByteArray::ByteArray(const char *_data, int _size)
 void ByteArray::Append(const ByteArray *arr)
 {
     if (arr && arr->data) {
-        data = (char *)realloc(data, size + arr->size);
+        if (cap < size + arr->size) {
+            data = (char *)realloc(data, size + arr->size);
+            cap = size + arr->size;
+        }
+
         memcpy(data + size, arr->data, arr->size);
         size += arr->size;
     }

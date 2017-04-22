@@ -27,9 +27,11 @@ struct ByteArray
 {
     char *data;
     int size;
+    int cap;
 
-    ByteArray() : data(NULL), size(0) {};
-    ByteArray(const char *data, int len);
+    ByteArray() : data(NULL), size(0), cap(0) {};
+    ByteArray(int _cap): size(0), cap(_cap) { data = (char *)malloc(cap); }
+    ByteArray(const char *data, int size);
     ~ByteArray() { if (data) free(data); }
 
     void Append(const ByteArray *other);
