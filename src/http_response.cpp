@@ -146,6 +146,9 @@ void HttpResponse::AddStatusLine()
     case http_not_implemented:
         s_code = "501 NOT IMPLEMENTED";
         break;
+    case http_insufficient_storage:
+        s_code = "507 INSUFFICIENT STORAGE";
+        break;
     }
 
     int len = sizeof("HTTP/1.X \r\n") - 1 + strlen(s_code);

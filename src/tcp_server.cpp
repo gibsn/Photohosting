@@ -64,8 +64,6 @@ void TcpServer::Init()
     int opt = 1;
     int r = setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
     assert(r != -1);
-    r = setsockopt(listen_fd, SOL_SOCKET, SO_KEEPALIVE, &opt, sizeof(opt));
-    assert(r != -1);
 
     struct sockaddr_in sin_addr;
     sin_addr.sin_family = AF_INET;

@@ -10,6 +10,7 @@
 
 #include "auth.h"
 #include "common.h"
+#include "exceptions.h"
 #include "log.h"
 #include "multipart.h"
 
@@ -162,11 +163,14 @@ void HttpSession::ProcessPhotosUpload()
         return;
     }
 
-    char *album_path = CreateWebAlbum(user, "test_album");
-    if (album_path) {
+    try {
+        char *album_path = CreateWebAlbum(user, "test_album");
+
         response = new HttpResponse(http_see_other, request->minor_version, keep_alive);
         response->AddLocationHeader(album_path);
-    } else {
+    } catch (NoSpace &) {
+        response = new HttpResponse(http_insufficient_storage, request->minor_version, keep_alive);
+    } catch (PhotohostingEx &) {
         response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
     }
 }
@@ -219,26 +223,20 @@ void HttpSession::ProcessPostRequest()
 char *HttpSession::CreateWebAlbum(const char *user, const char *page_title)
 {
     char *file_path = NULL;
-
-    char *err = NULL;
     char *album_path = NULL;
 
-    if (!(file_path = UploadFile(user))) goto fin;
+    try {
+        file_path = UploadFile(user);
 
-    // TODO: make auth
-    // TODO: get page title from somewhere
-    LOG_I("Creating new album for user \'%s\'", user);
-    err = http_server->CreateAlbum(user, file_path, page_title, &album_path);
-    if (err) {
-        LOG_E("WebAlbumCreator: %s", err);
-        goto fin;
+        // TODO: get page title from somewhere
+        LOG_I("Creating new album for user \'%s\'", user);
+        album_path = http_server->CreateAlbum(user, file_path, page_title);
+
+        LOG_I("The album for user \'%s\' has been successfully created at %s", user, album_path);
+    } catch (PhotohostingEx &) {
+        if (file_path) free(file_path);
+        throw;
     }
-
-    LOG_I("The album for user \'%s\' has been successfully created at %s", user, album_path);
-
-fin:
-    if (file_path) free(file_path);
-    if (err) free(err);
 
     return album_path;
 }
@@ -250,17 +248,21 @@ char *HttpSession::UploadFile(const char *user)
     ByteArray* file = NULL;
     char *saved_file_path = NULL;
 
-    file = GetFileFromRequest(&name);
-    LOG_I("Got file \'%s\' from user %s (%d bytes)", name, user, file->size);
-    // TODO: not quite right (can be more than one file)
+    try {
+        // TODO: not quite right (can be more than one file)
+        file = GetFileFromRequest(&name);
+        if (!file || !name) throw HttpBadFile(user);
 
-    if (!file || !name) goto fin;
+        LOG_I("Got file \'%s\' from user %s (%d bytes)", name, user, file->size);
+        saved_file_path = http_server->SaveFile(file, name);
+    } catch (PhotohostingEx &ex) {
+        LOG_E("%s\n", ex.GetErrMsg());
 
-    saved_file_path = http_server->SaveFile(file, name);
+        if (name) free(name);
+        if (file) delete file;
 
-fin:
-    if (name) free(name);
-    if (file) delete file;
+        throw;
+    }
 
     return saved_file_path;
 }

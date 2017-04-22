@@ -17,7 +17,8 @@ typedef enum {
     http_forbidden = 403,
     http_not_found = 404,
     http_internal_error = 500,
-    http_not_implemented = 501
+    http_not_implemented = 501,
+    http_insufficient_storage = 507
 } http_status_t;
 
 

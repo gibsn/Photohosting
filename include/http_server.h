@@ -39,13 +39,8 @@ public:
 
     char *SaveFile(ByteArray *, char *);
 
-    char *CreateAlbum(
-            const char *user,
-            const char *archive,
-            const char *page_title,
-            char **album_path);
+    char *CreateAlbum(const char *user, const char *archive, const char *title);
 
-    //Auth
     char *Authorise(const char *user, const char *password);
     const char *GetUserBySession(const char *sid);
 };

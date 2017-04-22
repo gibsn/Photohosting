@@ -16,6 +16,7 @@
 
 #include "auth.h"
 #include "common.h"
+#include "exceptions.h"
 #include "http_request.h"
 #include "http_response.h"
 #include "http_session.h"
@@ -76,34 +77,32 @@ char *HttpServer::SaveFile(ByteArray *file, char *name)
     strcat(full_path, "/");
     strcat(full_path, name);
 
-    int n;
     int fd = open(full_path, O_CREAT | O_WRONLY, 0666);
-    if (fd == -1) {
-        LOG_E("%s", strerror(errno));
-        goto err;
+    try {
+        if (fd == -1) {
+            LOG_E("Could not save file %s: %s", full_path, strerror(errno));
+            throw UnknownWriteError();
+        }
+
+        int n = write(fd, file->data, file->size);
+
+        if (file->size != n) {
+            LOG_E("Could not save file %s: %s", full_path, strerror(errno));
+            if (errno == ENOSPC) throw NoSpace();
+
+            throw UnknownWriteError();
+        }
     }
-
-    n = write(fd, file->data, file->size);
-
-    if (file->size != n) {
-        LOG_E("Could not write file %s", full_path);
-        goto err;
+    catch (PhotohostingEx &) {
+        if (full_path) free(full_path);
+        throw;
     }
 
     return full_path;
-
-err:
-    if (full_path) free(full_path);
-
-    return NULL;
 }
 
 
-char *HttpServer::CreateAlbum(
-        const char *user,
-        const char *archive,
-        const char *title,
-        char **path)
+char *HttpServer::CreateAlbum(const char *user, const char *archive, const char *title)
 {
     int random_id_len = 16;
     char *random_id = gen_random_string(random_id_len);
@@ -116,16 +115,13 @@ char *HttpServer::CreateAlbum(
     cfg.path_to_css = make_path_to_css(path_to_css);
 
     album_creator_debug(cfg);
-
     create_user_paths(user_path, cfg.path_to_unpack, cfg.path_to_thumbnails);
 
-    char *wac_err = NULL;
     try {
         CreateWebAlbum(cfg);
-    }
-    catch (WebAlbumCreatorEx &ex) {
+    } catch (Wac::WebAlbumCreatorEx &ex) {
+        LOG_E("WebAlbumCreator: %s", ex.GetErrMsg());
         LOG_E("Could not create album %s for user %s", title, user);
-        wac_err = strdup(ex.GetErrMsg());
 
         if (clean_paths(cfg)) {
             LOG_E("Could not clean paths after failing to create album");
@@ -134,7 +130,7 @@ char *HttpServer::CreateAlbum(
         }
     }
 
-    *path = make_r_path_to_webpage((char *)user, random_id);
+    char *path = make_r_path_to_webpage(user, random_id);
 
     int err = remove(archive);
     if (err) {
@@ -145,7 +141,7 @@ char *HttpServer::CreateAlbum(
     free(user_path);
     free_album_params(cfg);
 
-    return wac_err;
+    return path;
 }
 
 
