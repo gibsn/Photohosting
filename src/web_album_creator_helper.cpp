@@ -225,27 +225,28 @@ bool create_user_paths(
 
 int clean_paths(const WebAlbumParams &cfg)
 {
+    int ret = 0;
     if (rm_rf(cfg.path_to_unpack)) {
         LOG_E("Could not delete original photos at %s", cfg.path_to_unpack);
-        return -1;
+        ret = -1;
     }
 
     if (remove(cfg.path_to_unpack)) {
-        LOG_E("Could not path with the original photos at %s", cfg.path_to_unpack);
-        return -1;
+        LOG_E("Could not delete dir with the original photos at %s", cfg.path_to_unpack);
+        ret = -1;
     }
 
     if (rm_rf(cfg.path_to_thumbnails)) {
         LOG_E("Could not delete thumbnails at %s", cfg.path_to_thumbnails);
-        return -1;
+        ret = -1;
     }
 
     if (remove(cfg.path_to_thumbnails)) {
-        LOG_E("Could not path with the thumbnails at %s", cfg.path_to_thumbnails);
-        return -1;
+        LOG_E("Could not delete dir with the thumbnails at %s", cfg.path_to_thumbnails);
+        ret = -1;
     }
 
-    return 0;
+    return ret;
 }
 
 

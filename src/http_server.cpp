@@ -117,6 +117,8 @@ char *HttpServer::CreateAlbum(const char *user, const char *archive, const char 
     album_creator_debug(cfg);
     create_user_paths(user_path, cfg.path_to_unpack, cfg.path_to_thumbnails);
 
+    bool err = false;
+    // TODO make it the proper way
     try {
         CreateWebAlbum(cfg);
     } catch (Wac::WebAlbumCreatorEx &ex) {
@@ -128,18 +130,18 @@ char *HttpServer::CreateAlbum(const char *user, const char *archive, const char 
         } else {
             LOG_I("Cleaned the paths after failing to create album");
         }
+
+        err = true;
     }
 
     char *path = make_r_path_to_webpage(user, random_id);
-
-    int err = remove(archive);
-    if (err) {
-        LOG_E("Could not delete %s: %s", archive, strerror(errno));
-    }
+    if (remove(archive)) LOG_E("Could not delete %s: %s", archive, strerror(errno));
 
     free(random_id);
     free(user_path);
     free_album_params(cfg);
+
+    if (err) throw PhotohostingEx();
 
     return path;
 }

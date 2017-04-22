@@ -310,6 +310,11 @@ static int is_regular_file(const char *path)
 int rm_rf(const char *path)
 {
     DIR *dir = opendir(path);
+    if (!dir) {
+        LOG_E("Could not delete %s: %s", path, strerror(errno));
+        return -1;
+    }
+
     struct dirent *next_file;
     while ((next_file = readdir(dir)) != NULL) {
         if (0 == strcmp(next_file->d_name, ".") ||

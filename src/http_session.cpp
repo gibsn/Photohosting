@@ -158,7 +158,7 @@ void HttpSession::ProcessPhotosUpload()
 
     const char *user = http_server->GetUserBySession(request->sid);
     if (!user) {
-        LOG_I("Client from %s is not authorized, responding 403", s_addr);
+        LOG_I("Client from %s is not authorised, responding 403", s_addr);
         response = new HttpResponse(http_forbidden, request->minor_version, keep_alive);
         return;
     }
@@ -191,6 +191,8 @@ void HttpSession::ProcessAuth()
         response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
         goto fin;
     }
+
+    LOG_I("User %s has authorised from %s", user, s_addr);
 
     response = new HttpResponse(http_ok, request->minor_version, keep_alive);
     response->SetCookie("sid", new_sid);

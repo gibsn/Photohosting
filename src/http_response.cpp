@@ -239,6 +239,9 @@ void HttpResponse::AddDefaultBodies()
     case http_internal_error:
         str = "Internal server error";
         break;
+    case http_insufficient_storage:
+        str = "Insufficient storage";
+        break;
     default:
         ;
     }
