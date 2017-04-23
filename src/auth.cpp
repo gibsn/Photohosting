@@ -218,79 +218,88 @@ char *Auth::NewSession(const char *user)
     strcat(path, "/");
     strcat(path, sid);
 
-    int fd = -1;
-    try {
-        int fd = open(path, O_CREAT | O_WRONLY, 0666);
-        if (fd == -1) throw UnknownWriteError(strerror(errno));
-
-        int n = write(fd, user, strlen(user));
-        if (n != strlen(user)) throw UnknownWriteError(strerror(errno));
-    } catch (PhotohostingEx &ex) {
-        LOG_E("Could not create new session: %s", ex.GetErrMsg());
-
-        free(sid);
-        sid = NULL;
+    bool err = true;
+    int n;
+    int fd = open(path, O_CREAT | O_WRONLY, 0666);
+    if (fd == -1) {
+        goto fin;
     }
 
+    n = write(fd, user, strlen(user));
+    if (n != strlen(user)) {
+        goto fin;
+    }
+
+    err = false;
+
+fin:
     if (fd != -1) close(fd);
     if (path) free(path);
+
+    if (err) {
+        LOG_E("Could not save new session to disk: %s", strerror(errno));
+        if (sid) free(sid);
+        throw NewSessionEx();
+    }
 
     return sid;
 }
 
 
-bool Auth::DeleteSession(const char *sid)
+void Auth::DeleteSession(const char *sid)
 {
     char *path = (char *)malloc(strlen(tokens_path) + sizeof "/" + SID_LEN);
     memcpy(path, tokens_path, strlen(tokens_path) + 1);
     strcat(path, "/");
     strcat(path, sid);
 
-    bool ret = true;
     if (remove(path)) {
         LOG_E("Could not delete session %s: %s", sid, strerror(errno));
-        ret = false;
+        if (path) free(path);
+
+        throw DeleteSessionEx();
     }
 
     if (path) free(path);
-
-    return ret;
 }
 
 
 char *Auth::GetUserBySession(const char *sid) const
 {
-    char *ret = NULL;
-
     char *path = (char *)malloc(strlen(tokens_path) + sizeof "/" + SID_LEN);
     memcpy(path, tokens_path, strlen(tokens_path) + 1);
     strcat(path, "/");
     strcat(path, sid);
 
-    char user[256];
-    int n, fd = -1;
-    try {
-        fd = open(path, O_RDONLY);
-        if (fd == -1) {
-            if (errno == ENOENT) {
-                LOG_W("Got a request with the non-existing session id %s", sid);
-                goto fin;
-            }
-
-            throw UnknownReadError(strerror(errno));
+    char user[256], *ret = NULL;
+    int n;
+    bool err = true;
+    int fd = open(path, O_RDONLY);
+    if (fd == -1) {
+        if (errno == ENOENT) {
+            LOG_W("Got a request with the non-existing session id %s", sid);
+            err = false;
         }
 
-        int n = read(fd, user, sizeof user);
-        if (n == -1) throw UnknownReadError(strerror(errno));
-
-        ret = strndup(user, n);
-    } catch (PhotohostingEx &ex) {
-        LOG_E("Could not get user by session: %s", ex.GetErrMsg());
+        goto fin;
     }
+
+    n = read(fd, user, sizeof user);
+    if (n == -1) {
+        goto fin;
+    }
+
+    ret = strndup(user, n);
+    err = false;
 
 fin:
     if (fd != -1) close(fd);
     if (path) free(path);
+
+    if (err) {
+        LOG_E("Could not read user's session token from disk: %s", strerror(errno));
+        throw GetUserBySessionEx();
+    }
 
     return ret;
 }

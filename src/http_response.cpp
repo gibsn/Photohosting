@@ -71,6 +71,16 @@ void HttpResponse::SetBody(ByteArray *_body)
 }
 
 
+void HttpResponse::SetBody(const char *_body)
+{
+    if (_body) {
+        body_len = strlen(_body);
+        body = (char *)malloc(body_len);
+        memcpy(body, _body, body_len);
+    }
+}
+
+
 void HttpResponse::AddHeader(const char *name, const char *value)
 {
     int len = strlen(name) + 2 + strlen(value) + 2;

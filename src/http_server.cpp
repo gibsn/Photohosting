@@ -81,24 +81,24 @@ char *HttpServer::SaveFile(ByteArray *file, char *name)
     try {
         if (fd == -1) {
             LOG_E("Could not save file %s: %s", full_path, strerror(errno));
-            throw UnknownWriteError(strerror(errno));
+            throw SaveFileEx();
         }
 
         int n = write(fd, file->data, file->size);
-
         if (file->size != n) {
             LOG_E("Could not save file %s: %s", full_path, strerror(errno));
             if (errno == ENOSPC) throw NoSpace();
 
-            throw UnknownWriteError(strerror(errno));
+            throw SaveFileEx();
         }
+
+        if (full_path) free(full_path);
+        return full_path;
     }
     catch (PhotohostingEx &) {
         if (full_path) free(full_path);
         throw;
     }
-
-    return full_path;
 }
 
 
@@ -123,7 +123,6 @@ char *HttpServer::CreateAlbum(const char *user, const char *archive, const char 
         CreateWebAlbum(cfg);
     } catch (Wac::WebAlbumCreatorEx &ex) {
         LOG_E("WebAlbumCreator: %s", ex.GetErrMsg());
-        LOG_E("Could not create album %s for user %s", title, user);
 
         if (clean_paths(cfg)) {
             LOG_E("Could not clean paths after failing to create album");
@@ -137,11 +136,14 @@ char *HttpServer::CreateAlbum(const char *user, const char *archive, const char 
     char *path = make_r_path_to_webpage(user, random_id);
     if (remove(archive)) LOG_E("Could not delete %s: %s", archive, strerror(errno));
 
-    free(random_id);
-    free(user_path);
+    if (random_id) free(random_id);
+    if (user_path) free(user_path);
     free_album_params(cfg);
 
-    if (err) throw PhotohostingEx();
+    if (err) {
+        LOG_E("Could not create album %s for user %s", title, user);
+        throw PhotohostingEx();
+    }
 
     return path;
 }
@@ -157,12 +159,15 @@ char *HttpServer::Authorise(const char *user, const char *password)
 }
 
 
-bool HttpServer::Logout(const char *sid)
+void HttpServer::Logout(const char *sid)
 {
+    if (*sid == '\0') return;
+
     return auth->DeleteSession(sid);
 }
 
 
+// throws GetUserBySessionEx
 char *HttpServer::GetUserBySession(const char *sid) {
     if (*sid == '\0') return NULL;
 

@@ -27,20 +27,20 @@ public:
 };
 
 class NoSpace: public SystemEx {};
+class SaveFileEx: public SystemEx {};
+class UnknownWriteError: public SystemEx {};
+class UnknownReadError: public SystemEx {};
 
-class UnknownWriteError: public SystemEx {
 
-public:
-    UnknownWriteError(const char *t): SystemEx(t) {};
-};
+class AuthEx: public PhotohostingEx {};
 
-class UnknownReadError: public SystemEx {
+class GetUserBySessionEx: public AuthEx {};
+class NewSessionEx: public AuthEx {};
+class DeleteSessionEx: public AuthEx {};
 
-public:
-    UnknownReadError(const char *t): SystemEx(t) {};
-};
 
 class UserEx : public PhotohostingEx {};
+
 
 class HttpEx: public PhotohostingEx {};
 

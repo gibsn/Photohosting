@@ -155,8 +155,16 @@ void HttpSession::ProcessGetRequest()
 void HttpSession::ProcessPhotosUpload()
 {
     LOG_I("Client from %s is trying to upload photos", s_addr);
+    char *user = NULL;
 
-    char *user = http_server->GetUserBySession(request->sid);
+    try {
+        user = http_server->GetUserBySession(request->sid);
+    } catch (GetUserBySessionEx &) {
+        LOG_E("Could not check if client is authorised");
+        response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
+        return;
+    }
+
     if (!user) {
         LOG_I("Client from %s is not authorised, responding 403", s_addr);
         response = new HttpResponse(http_forbidden, request->minor_version, keep_alive);
@@ -165,14 +173,21 @@ void HttpSession::ProcessPhotosUpload()
 
     try {
         char *album_path = CreateWebAlbum(user, "test_album");
-
-        response = new HttpResponse(http_see_other, request->minor_version, keep_alive);
-        response->AddLocationHeader(album_path);
+        if (album_path) {
+            response = new HttpResponse(http_see_other, request->minor_version, keep_alive);
+            response->AddLocationHeader(album_path);
+            free(album_path);
+        } else {
+            response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
+        }
     } catch (NoSpace &) {
         response = new HttpResponse(http_insufficient_storage, request->minor_version, keep_alive);
-    } catch (PhotohostingEx &) {
-        response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
+        response->SetBody("Bad data");
+    } catch (SystemEx &) {
+        response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
     }
+
+    if (user) free(user);
 }
 
 
@@ -186,10 +201,15 @@ void HttpSession::ProcessAuth()
         goto fin;
     }
 
-    new_sid = http_server->Authorise(user, password);
-    if (!new_sid) {
-        response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
-        LOG_I("Client from %s failed to authorise as user %s", s_addr, user);
+    try {
+        new_sid = http_server->Authorise(user, password);
+        if (!new_sid) {
+            response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
+            LOG_I("Client from %s failed to authorise as user %s", s_addr, user);
+            goto fin;
+        }
+    } catch (NewSessionEx &) {
+        response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
         goto fin;
     }
 
@@ -207,18 +227,30 @@ fin:
 
 void HttpSession::ProcessLogout()
 {
-    char *user = http_server->GetUserBySession(request->sid);
+    char *user = NULL;
 
-    if (http_server->Logout(request->sid)) {
+    try {
+        user = http_server->GetUserBySession(request->sid);
+
+        if (!user) {
+            LOG_W("Unauthorised user from %s attempted to sign out", s_addr);
+            response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
+            response->SetBody("You are not signed in");
+            goto fin;
+        }
+
+        http_server->Logout(request->sid);
+
         LOG_I("User %s has signed out from %s", user, s_addr);
         response = new HttpResponse(http_ok, request->minor_version, keep_alive);
         response->SetCookie("sid", "");
-    } else {
+    } catch (SystemEx &) {
         LOG_E("Could not log out user %s", user);
         response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
     }
 
-    free(user);
+fin:
+    if (user) free(user);
 }
 
 
@@ -256,12 +288,13 @@ char *HttpSession::CreateWebAlbum(const char *user, const char *page_title)
         album_path = http_server->CreateAlbum(user, file_path, page_title);
 
         LOG_I("The album for user \'%s\' has been successfully created at %s", user, album_path);
+
+        if (file_path) free(file_path);
+        return album_path;
     } catch (PhotohostingEx &) {
         if (file_path) free(file_path);
         throw;
     }
-
-    return album_path;
 }
 
 
