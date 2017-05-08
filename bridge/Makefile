@@ -11,6 +11,9 @@ PICOHTTPPARSER_STATIC = libpico.a
 MULTIPARTPARSER_DIR = ../$(EXTERNALS_BASEDIR)/multipart-parser-c
 MULTIPARTPARSER_STATIC = libmultipart.a
 
+INIPARSER_DIR = ../$(EXTERNALS_BASEDIR)/iniparser
+INIPARSER_STATIC = libiniparser.a
+
 
 WebAlbumCreator:
 	@echo "Compiling WebAlbumCreator"
@@ -31,11 +34,18 @@ multipart_parser:
 	cp $(MULTIPARTPARSER_DIR)/$(MULTIPARTPARSER_STATIC) $(LIBRARY_DIR)
 	cp $(MULTIPARTPARSER_DIR)/multipart_parser.h $(INCLUDE_DIR)
 
+iniparser:
+	@echo "Compiling iniparser"
+	make -C $(INIPARSER_DIR) -f Makefile static
+	cp $(INIPARSER_DIR)/$(INIPARSER_STATIC) $(LIBRARY_DIR)
+	cp $(INIPARSER_DIR)/iniparser.h $(INCLUDE_DIR)
+
 
 clean:
 	make -C $(PICOHTTPPARSER_DIR) -f Makefile clean
 	make -C $(WEBALBUMCREATOR_DIR) -f Makefile clean
 	make -C $(MULTIPARTPARSER_DIR) -f Makefile clean
+	make -C $(INIPARSER_DIR) -f Makefile clean
 
-.PHONY: WebAlbumCreator picohttpparser multipart_parser clean
+.PHONY: WebAlbumCreator picohttpparser multipart_parser iniparser clean
 
