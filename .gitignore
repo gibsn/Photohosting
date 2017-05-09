@@ -11,4 +11,6 @@ tags
 server
 users
 
+config_local.ini
+
 externals/WebAlbumCreator

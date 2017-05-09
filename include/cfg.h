@@ -27,7 +27,7 @@
     CFG_ENTRY(path_to_css,       "server", "path_to_css",       STRING, ".")       \
     CFG_ENTRY(path_to_tokens,    "server", "path_to_tokens",    STRING, ".")       \
     CFG_ENTRY(path_to_pwd,       "server", "users",             STRING, "./users") \
-    CFG_ENTRY(runas,             "server", "runas",             STRING, "")        \
+    CFG_ENTRY(runas,             "server", "runas",             STRING, NULL)      \
 
 
 #define CFG_ENTRY(VAR, SECTION, NAME, TYPE, DEF_VALUE) \
