@@ -15,6 +15,7 @@
 #include "WebAlbumCreator.h"
 
 #include "auth.h"
+#include "cfg.h"
 #include "common.h"
 #include "exceptions.h"
 #include "http_request.h"

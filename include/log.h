@@ -10,13 +10,13 @@
 
 
 extern pid_t my_pid;
-extern int max_log_level;
+extern int log_level;
 
 //TODO: fix logging, merges when multiple processes are launched (can use syslog)
 
 
 void get_pid_for_logger();
-void set_max_log_level(int);
+void set_log_level(int);
 
 
 #define     LOG_ESCAPE(x)          "\033[01;" #x "m"
@@ -38,7 +38,7 @@ void set_max_log_level(int);
 
 
 #define LOG_ANY(level, level_str, str, ...) do {                   \
-    if (level > max_log_level) break;                              \
+    if (level > log_level) break;                                  \
                                                                    \
     if (level == LOG_ERR) {                                        \
         fprintf(stdout, LOG_COLOUR_RED);                           \

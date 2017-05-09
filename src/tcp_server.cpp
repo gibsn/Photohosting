@@ -11,6 +11,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "cfg.h"
 #include "common.h"
 #include "log.h"
 

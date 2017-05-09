@@ -5,26 +5,6 @@
 #include <stdlib.h>
 
 
-struct Config
-{
-    int port;
-    char *addr;
-    int n_workers;
-    int max_log_level;
-    char *path_to_static;
-    char *path_to_tmp_files;
-    char *path_to_css;
-    char *path_to_tokens;
-    char *path_to_pwd;
-    char *runas;
-
-    Config();
-    ~Config();
-
-    void Check();
-};
-
-
 struct ByteArray
 {
     char *data;
@@ -40,7 +20,7 @@ struct ByteArray
 };
 
 
-bool process_cmd_arguments(int, char **, Config &);
+bool process_cmd_arguments(int argc, char **argv);
 void hexdump(uint8_t *, size_t);
 ByteArray *read_file(const char *);
 bool file_exists(const char *);

@@ -3,6 +3,7 @@
 
 #include "auth.h"
 #include "common.h"
+#include "cfg.h"
 #include "http_server.h"
 #include "log.h"
 
@@ -11,13 +12,15 @@ int main(int argc, char **argv)
 {
     Config cfg;
 
-    if (!process_cmd_arguments(argc, argv, cfg)) return -1;
+    if (!process_cmd_arguments(argc, argv)) return -1;
+
+    if (!cfg.Init("config.ini")) return -1;
     cfg.Check();
-    LOG_I("Initialised config");
 
     get_pid_for_logger();
-    set_max_log_level(cfg.max_log_level);
+    set_log_level(cfg.log_level);
     LOG_I("Initialised logging");
+    LOG_I("Initialised config");
 
     Auth auth;
     auth.Init(cfg.path_to_pwd, cfg.path_to_tokens);

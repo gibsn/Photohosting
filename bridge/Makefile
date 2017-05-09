@@ -38,7 +38,8 @@ iniparser:
 	@echo "Compiling iniparser"
 	make -C $(INIPARSER_DIR) -f Makefile static
 	cp $(INIPARSER_DIR)/$(INIPARSER_STATIC) $(LIBRARY_DIR)
-	cp $(INIPARSER_DIR)/iniparser.h $(INCLUDE_DIR)
+	cp $(INIPARSER_DIR)/src/iniparser.h $(INCLUDE_DIR)
+	cp $(INIPARSER_DIR)/src/dictionary.h $(INCLUDE_DIR)
 
 
 clean:

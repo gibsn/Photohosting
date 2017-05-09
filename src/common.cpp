@@ -18,83 +18,41 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "cfg.h"
 #include "log.h"
 
 
-Config::Config()
-    : port(0),
-    addr(0),
-    n_workers(0),
-    max_log_level(-1),
-    path_to_static(NULL),
-    path_to_tmp_files(NULL),
-    path_to_tokens(NULL),
-    path_to_pwd(NULL),
-    runas(NULL)
-{}
-
-
-Config::~Config()
+static void print_help()
 {
-    if (addr) free(addr);
-    if (path_to_static) free(path_to_static);
-    if (path_to_tmp_files) free(path_to_tmp_files);
-    if (path_to_tokens) free(path_to_tokens);
-    if (path_to_pwd) free(path_to_pwd);
-    if (runas) free(runas);
+    fprintf(stderr,
+        "Photohosting by gibsn\n\n"
+        "Available options:\n"
+
+        " -c [string]: path to config file\n"
+        " -C         : generate config file and exit\n"
+    );
 }
 
 
-void Config::Check()
+bool process_cmd_arguments(int argc, char **argv)
 {
-    if (!port) {
-        fprintf(stderr,
-            "You have not specified any port, "
-            "listening on 80 by default\n");
-        port = 80;
+    int c;
+    while ((c = getopt(argc, argv, "hc:")) != -1) {
+        switch(c) {
+        case 'c':
+            break;
+        case 'h':
+            print_help();
+            exit(0);
+        case '?':
+        case ':':
+            return false;
+        default:
+            ;
+        }
     }
 
-    if (!addr) {
-        fprintf(stderr,
-            "You have not specified any ip, "
-            "listening on 0.0.0.0 by default\n");
-        addr = strdup("0.0.0.0");
-    }
-
-    if (!n_workers) {
-        fprintf(stderr,
-            "You have not specified amount of workers, "
-            "using 1 by default\n");
-        n_workers = 1;
-    }
-
-    if (max_log_level == -1) {
-        fprintf (stderr,
-            "You have not specified level of logging, "
-            "using INFO by default\n");
-        max_log_level = LOG_INFO;
-    }
-
-    if (!path_to_static) {
-        fprintf (stderr,
-            "You have not specified path to the static files, "
-            "using the current directory by default\n");
-        path_to_static = strdup(".");
-    }
-
-    if (!path_to_tmp_files) {
-        fprintf (stderr,
-            "You have not specified path to the tmp files, "
-            "using the current directory by default\n");
-        path_to_tmp_files = strdup(".");
-    }
-
-    if (!path_to_tokens) {
-        fprintf (stderr,
-            "You have not specified path to the session tokens, "
-            "using the current directory by default\n");
-        path_to_tokens = strdup(".");
-    }
+    return true;
 }
 
 
@@ -121,113 +79,6 @@ void ByteArray::Append(const ByteArray *arr)
         memcpy(data + size, arr->data, arr->size);
         size += arr->size;
     }
-}
-
-
-static void print_help()
-{
-    fprintf(stderr,
-        "HTTP-server\n\n"
-        "Available options:\n"
-        "  -i [a.b.c.d]: address to listen on\n"
-        "  -p [int]: port to listen on\n"
-        "  -n [int]: amount of workers\n"
-        "  -l [0-7]: level of logging\n"
-        "  -t [string]: path to session tokens\n"
-        "  -s [string]: path to static files\n"
-        "  -r [user:group]: setuid/setgid after binding\n"
-        "  -u [string]: file with passwords\n"
-    );
-}
-
-
-bool process_cmd_arguments(int argc, char **argv, Config &cfg)
-{
-    if (argc == 1) {
-        print_help();
-        return false;
-    }
-
-    int c;
-
-    //TODO: fix strtol bug
-    while ((c = getopt(argc, argv, "hi:p:n:l:s:r:t:u:")) != -1) {
-        switch(c) {
-        case 'i':
-            cfg.addr = strdup(optarg);
-            if (!inet_aton(cfg.addr, 0)) {
-                fprintf(stderr, "Invalid IP (%s), must be A.B.C.D", optarg);
-                return false;
-            }
-            break;
-        case 'p':
-            cfg.port = strtol(optarg, (char **)NULL, 10);
-            if (!cfg.port) {
-                fprintf(stderr, "Wrong port value (%s), must be int\n", optarg);
-                return false;
-            }
-            break;
-        case 'n':
-            cfg.n_workers = strtol(optarg, (char **)NULL, 10);
-            if (!cfg.n_workers) {
-                fprintf(stderr, "Wrong workers value (%s), must be int\n",
-                    optarg);
-                return false;
-            }
-            break;
-        case 'l':
-            cfg.max_log_level = strtol(optarg, (char**)NULL, 10);
-            if (!cfg.max_log_level ) {
-                fprintf(stderr, "Wrong log level (%s), must be [0-7]\n",
-                    optarg);
-                return false;
-            }
-            break;
-        case 's':
-            cfg.path_to_static = strdup(optarg);
-            if (!cfg.path_to_static) {
-                fprintf(stderr, "Wrong path to static files (%s), must be string\n",
-                    optarg);
-                return false;
-            }
-            break;
-        case 'r':
-            cfg.runas = strdup(optarg);
-            if (!cfg.runas) {
-                fprintf(stderr, "Wrong runas option (%s), must be user:group\n",
-                    optarg);
-                return false;
-            }
-            break;
-        case 't':
-            cfg.path_to_tokens = strdup(optarg);
-            if (!cfg.path_to_tokens) {
-                fprintf(stderr, "Wrong path to tokens (%s), must be string\n",
-                    optarg);
-                return false;
-            }
-            break;
-        case 'u':
-            cfg.path_to_pwd = strdup(optarg);
-            if (!cfg.path_to_pwd) {
-                fprintf(stderr, "Wrong path to file with passwords (%s), must be string\n",
-                    optarg);
-                return false;
-            }
-            break;
-        case 'h':
-            print_help();
-            return false;
-        case '?':
-            return false;
-        case ':':
-            return false;
-        default:
-            ;
-        }
-    }
-
-    return true;
 }
 
 

@@ -6,7 +6,6 @@
 #include "tcp_session.h"
 
 
-
 struct Config;
 class AuthDriver;
 
