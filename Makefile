@@ -54,6 +54,7 @@ clean:
 	rm -rf $(BRIDGE_DIR)/lib
 	rm -rf $(BRIDGE_DIR)/bin
 	rm -f .bridge.touch
+	rm -f server
 	make -C $(dir $(BRIDGE_DIR)/Makefile) -f Makefile clean
 
 clangcomp:
