@@ -38,6 +38,8 @@ struct Config
 {
     CFG_ENTRIES
 
+    char *path_to_cfg;
+
 #undef CFG_ENTRY
 #undef CFG_ENTRIES
 

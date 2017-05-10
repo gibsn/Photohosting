@@ -24,6 +24,7 @@
 #define CFG_ENTRY(VAR, SECTION, NAME, TYPE, DEF_VALUE) \
     VAR = CFG_##TYPE##_DEF_VALUE;
 Config::Config()
+    : path_to_cfg(NULL)
 {
     CFG_INIT
 }
@@ -36,6 +37,8 @@ Config::Config()
     CFG_##TYPE##_FREE(VAR)
 Config::~Config()
 {
+    if (path_to_cfg) free(path_to_cfg);
+
     CFG_FREE
 }
 #undef CFG_ENTRY

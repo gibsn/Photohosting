@@ -34,12 +34,13 @@ static void print_help()
 }
 
 
-bool process_cmd_arguments(int argc, char **argv)
+bool process_cmd_arguments(int argc, char **argv, Config &cfg)
 {
     int c;
     while ((c = getopt(argc, argv, "hc:")) != -1) {
         switch(c) {
         case 'c':
+            cfg.path_to_cfg = strdup(optarg);
             break;
         case 'h':
             print_help();

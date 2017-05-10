@@ -170,7 +170,7 @@ void HttpServer::Logout(const char *sid)
 
 // throws GetUserBySessionEx
 char *HttpServer::GetUserBySession(const char *sid) {
-    if (*sid == '\0') return NULL;
+    if (!sid || *sid == '\0') return NULL;
 
     return auth->GetUserBySession(sid);
 }

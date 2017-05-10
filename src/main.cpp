@@ -12,9 +12,9 @@ int main(int argc, char **argv)
 {
     Config cfg;
 
-    if (!process_cmd_arguments(argc, argv)) return -1;
+    if (!process_cmd_arguments(argc, argv, cfg)) return -1;
 
-    if (!cfg.Init("config.ini")) return -1;
+    if (!cfg.Init(cfg.path_to_cfg)) return -1;
     cfg.Check();
 
     get_pid_for_logger();

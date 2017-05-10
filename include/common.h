@@ -20,7 +20,9 @@ struct ByteArray
 };
 
 
-bool process_cmd_arguments(int argc, char **argv);
+struct Config;
+
+bool process_cmd_arguments(int argc, char **argv, Config &cfg);
 void hexdump(uint8_t *, size_t);
 ByteArray *read_file(const char *);
 bool file_exists(const char *);
