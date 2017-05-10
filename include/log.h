@@ -31,24 +31,17 @@ void set_log_level(const char *log_level);
 #define     LOG_COLOUR_NORMAL      "\033[00m"
 
 
-#define LOG_E(str, ...) LOG_ANY(LOG_ERR, "ERROR", str, ##__VA_ARGS__)
-#define LOG_W(str, ...) LOG_ANY(LOG_WARNING, "WARNING", str, ##__VA_ARGS__)
-#define LOG_I(str, ...) LOG_ANY(LOG_NOTICE, "INFO", str, ##__VA_ARGS__)
-#define LOG_D(str, ...) LOG_ANY(LOG_DEBUG, "DEBUG", str, ##__VA_ARGS__)
+#define LOG_E(str, ...) LOG_ANY(LOG_ERR, RED, "ERROR", str, ##__VA_ARGS__)
+#define LOG_W(str, ...) LOG_ANY(LOG_WARNING, YELLOW, "WARNING", str, ##__VA_ARGS__)
+#define LOG_N(str, ...) LOG_ANY(LOG_NOTICE, GRAY, "NOTICE", str, ##__VA_ARGS__)
+#define LOG_I(str, ...) LOG_ANY(LOG_INFO, GREEN, "INFO", str, ##__VA_ARGS__)
+#define LOG_D(str, ...) LOG_ANY(LOG_DEBUG, WHITE, "DEBUG", str, ##__VA_ARGS__)
 
 
-#define LOG_ANY(level, level_str, str, ...) do {                   \
-    if (level > log_level) break;                                  \
+#define LOG_ANY(LEVEL, COLOUR, LEVEL_STR, STR, ...) do {           \
+    if (LEVEL > log_level) break;                                  \
                                                                    \
-    if (level == LOG_ERR) {                                        \
-        fprintf(stdout, LOG_COLOUR_RED);                           \
-    } else if (level == LOG_WARNING) {                             \
-        fprintf(stdout, LOG_COLOUR_YELLOW);                        \
-    } else if (level == LOG_NOTICE) {                              \
-        fprintf(stdout, LOG_COLOUR_GREEN);                         \
-    } else if (level == LOG_DEBUG) {                               \
-        fprintf(stdout, LOG_COLOUR_WHITE);                         \
-    }                                                              \
+    fprintf(stdout, LOG_COLOUR_##COLOUR);                          \
                                                                    \
     time_t t = time(NULL);                                         \
     struct tm *tm = localtime(&t);                                 \
@@ -63,7 +56,7 @@ void set_log_level(const char *log_level);
     );                                                             \
                                                                    \
     fprintf(stdout, "[%d]", my_pid);                               \
-    fprintf(stdout, "[" level_str "] " LOG_COLOUR_NORMAL str "\n", \
+    fprintf(stdout, "[" LEVEL_STR "] " LOG_COLOUR_NORMAL STR "\n", \
         ##__VA_ARGS__);                                            \
 } while(0);
 

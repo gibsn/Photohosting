@@ -19,6 +19,8 @@ void set_log_level(const char *_log_level)
         log_level = LOG_WARNING;
     } else if (!strcmp(_log_level, "LOG_NOTICE")) {
         log_level = LOG_NOTICE;
+    } else if (!strcmp(_log_level, "LOG_INFO")) {
+        log_level = LOG_INFO;
     } else if (!strcmp(_log_level, "LOG_DEBUG")) {
         log_level = LOG_DEBUG;
     }
