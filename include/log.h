@@ -16,7 +16,7 @@ extern int log_level;
 
 
 void get_pid_for_logger();
-void set_log_level(int);
+void set_log_level(const char *log_level);
 
 
 #define     LOG_ESCAPE(x)          "\033[01;" #x "m"

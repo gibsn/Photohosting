@@ -17,17 +17,17 @@
 
 
 //            var,               section,  name,                type,   def value
-#define CFG_GEN                                                                    \
-    CFG_ENTRY(port,              "server", "port",              INT,    80)        \
-    CFG_ENTRY(addr,              "server", "addr",              STRING, "0.0.0.0") \
-    CFG_ENTRY(n_workers,         "server", "workers",           INT,    2)         \
-    CFG_ENTRY(log_level,         "server", "log_level",         INT,    5)         \
-    CFG_ENTRY(path_to_static,    "server", "path_to_static",    STRING, ".")       \
-    CFG_ENTRY(path_to_tmp_files, "server", "path_to_tmp_files", STRING, ".")       \
-    CFG_ENTRY(path_to_css,       "server", "path_to_css",       STRING, ".")       \
-    CFG_ENTRY(path_to_tokens,    "server", "path_to_tokens",    STRING, ".")       \
-    CFG_ENTRY(path_to_pwd,       "server", "users",             STRING, "./users") \
-    CFG_ENTRY(runas,             "server", "runas",             STRING, NULL)      \
+#define CFG_GEN                                                                     \
+    CFG_ENTRY(port,              "server", "port",              INT,    80)         \
+    CFG_ENTRY(addr,              "server", "addr",              STRING, "0.0.0.0")  \
+    CFG_ENTRY(n_workers,         "server", "workers",           INT,    2)          \
+    CFG_ENTRY(log_level,         "server", "log_level",         STRING, "LOG_INFO") \
+    CFG_ENTRY(path_to_static,    "server", "path_to_static",    STRING, ".")        \
+    CFG_ENTRY(path_to_tmp_files, "server", "path_to_tmp_files", STRING, ".")        \
+    CFG_ENTRY(path_to_css,       "server", "path_to_css",       STRING, ".")        \
+    CFG_ENTRY(path_to_tokens,    "server", "path_to_tokens",    STRING, ".")        \
+    CFG_ENTRY(path_to_pwd,       "server", "users",             STRING, "./users")  \
+    CFG_ENTRY(runas,             "server", "runas",             STRING, NULL)       \
 
 
 #define CFG_ENTRY(VAR, SECTION, NAME, TYPE, DEF_VALUE) \
