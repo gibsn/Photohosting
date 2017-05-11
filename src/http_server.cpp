@@ -14,7 +14,6 @@
 
 #include "WebAlbumCreator.h"
 
-#include "auth.h"
 #include "cfg.h"
 #include "common.h"
 #include "exceptions.h"
@@ -102,37 +101,11 @@ char *HttpServer::SaveFile(ByteArray *file, char *name)
 }
 
 
-char *HttpServer::Authorise(const char *user, const char *password)
-{
-    if (auth->Check(user, password)) {
-        return auth->NewSession(user);
-    }
 
-    return NULL;
-}
-
-
-void HttpServer::Logout(const char *sid)
-{
-    if (*sid == '\0') return;
-
-    return auth->DeleteSession(sid);
-}
-
-
-// throws GetUserBySessionEx
-char *HttpServer::GetUserBySession(const char *sid) {
-    if (!sid || *sid == '\0') return NULL;
-
-    return auth->GetUserBySession(sid);
-}
-
-
-HttpServer::HttpServer(const Config &cfg, Photohosting *_photohosting, AuthDriver *_auth)
+HttpServer::HttpServer(const Config &cfg, Photohosting *_photohosting)
     : TcpServer(cfg),
     path_to_static_len(0),
-    photohosting(_photohosting),
-    auth(_auth)
+    photohosting(_photohosting)
 {
     path_to_static = strdup(cfg.path_to_static);
     assert(path_to_static);

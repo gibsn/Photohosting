@@ -43,7 +43,7 @@ class HttpSession: public AppLayerDriver {
 
     void Respond();
 
-    void ProcessAuth();
+    void ProcessLogin();
     void ProcessLogout();
 
     void ProcessPhotosUpload();

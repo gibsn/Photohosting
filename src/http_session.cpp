@@ -160,7 +160,7 @@ void HttpSession::ProcessPhotosUpload()
     char *user = NULL;
 
     try {
-        user = http_server->GetUserBySession(request->sid);
+        user = photohosting->GetUserBySession(request->sid);
     } catch (GetUserBySessionEx &) {
         LOG_E("Could not check if client is authorised");
         response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
@@ -194,7 +194,7 @@ void HttpSession::ProcessPhotosUpload()
 }
 
 
-void HttpSession::ProcessAuth()
+void HttpSession::ProcessLogin()
 {
     char *new_sid = NULL;
     char *user = Auth::ParseLoginFromReq(request->body, request->body_len);
@@ -205,7 +205,7 @@ void HttpSession::ProcessAuth()
     }
 
     try {
-        new_sid = http_server->Authorise(user, password);
+        new_sid = photohosting->Authorise(user, password);
         if (!new_sid) {
             response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
             LOG_I("Client from %s failed to authorise as user %s", s_addr, user);
@@ -233,7 +233,7 @@ void HttpSession::ProcessLogout()
     char *user = NULL;
 
     try {
-        user = http_server->GetUserBySession(request->sid);
+        user = photohosting->GetUserBySession(request->sid);
 
         if (!user) {
             LOG_W("Unauthorised user from %s attempted to sign out", s_addr);
@@ -242,7 +242,7 @@ void HttpSession::ProcessLogout()
             goto fin;
         }
 
-        http_server->Logout(request->sid);
+        photohosting->Logout(request->sid);
 
         LOG_I("User %s has signed out from %s", user, s_addr);
         response = new HttpResponse(http_ok, request->minor_version, keep_alive);
@@ -263,8 +263,8 @@ void HttpSession::ProcessPostRequest()
 
     if (LOCATION_IS("/upload/photos")) {
         ProcessPhotosUpload();
-    } else if (LOCATION_IS("/auth")) {
-        ProcessAuth();
+    } else if (LOCATION_IS("/login")) {
+        ProcessLogin();
     } else if (LOCATION_IS("/logout")) {
         ProcessLogout();
     } else {

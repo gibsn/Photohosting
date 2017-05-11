@@ -4,13 +4,18 @@
 
 #include "WebAlbumCreator.h"
 
+#include "auth.h"
 #include "common.h"
 #include "exceptions.h"
 #include "log.h"
 #include "web_album_creator_helper.h"
 
 
-Photohosting::Photohosting(const char *_path_to_static, const char *_relative_path_to_css)
+Photohosting::Photohosting(
+    const char *_path_to_static,
+    const char *_relative_path_to_css,
+    AuthDriver *_auth)
+    : auth(_auth)
 {
     path_to_static = strdup(_path_to_static);
     relative_path_to_css = strdup(_relative_path_to_css);
@@ -75,5 +80,31 @@ char *Photohosting::CreateAlbum(const char *user, const char *archive, const cha
     if (err) throw PhotohostingEx();
 
     return path;
+}
+
+
+char *Photohosting::Authorise(const char *user, const char *password)
+{
+    if (auth->Check(user, password)) {
+        return auth->NewSession(user);
+    }
+
+    return NULL;
+}
+
+
+void Photohosting::Logout(const char *sid)
+{
+    if (*sid == '\0') return;
+
+    return auth->DeleteSession(sid);
+}
+
+
+// throws GetUserBySessionEx
+char *Photohosting::GetUserBySession(const char *sid) {
+    if (!sid || *sid == '\0') return NULL;
+
+    return auth->GetUserBySession(sid);
 }
 
