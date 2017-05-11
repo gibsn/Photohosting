@@ -1,13 +1,12 @@
 #ifndef HTTP_SERVER_H_SENTRY
 #define HTTP_SERVER_H_SENTRY
 
-
 #include "tcp_server.h"
-#include "tcp_session.h"
 
 
 struct Config;
 class Photohosting;
+class TcpSession;
 
 
 class HttpServer: public TcpServer {

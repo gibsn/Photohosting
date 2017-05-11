@@ -22,6 +22,7 @@
 #include "http_session.h"
 #include "log.h"
 #include "photohosting.h"
+#include "tcp_session.h"
 #include "web_album_creator_helper.h"
 
 
