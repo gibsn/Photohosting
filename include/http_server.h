@@ -8,6 +8,7 @@
 
 struct Config;
 class AuthDriver;
+class Photohosting;
 
 
 class HttpServer: public TcpServer {
@@ -18,6 +19,7 @@ class HttpServer: public TcpServer {
 
     char *path_to_css; // relatively to path_to_static
 
+    Photohosting *photohosting;
     AuthDriver *auth;
 
     virtual TcpSession *CreateNewSession();
@@ -25,15 +27,14 @@ class HttpServer: public TcpServer {
     char *AddPathToStaticPrefix(const char *) const;
 
 public:
-    HttpServer();
-    HttpServer(const Config &cfg, AuthDriver *_auth);
+    HttpServer(const Config &cfg, Photohosting *photohosting, AuthDriver *auth);
     virtual ~HttpServer();
 
     ByteArray *GetFileByLocation(const char *);
 
     char *SaveFile(ByteArray *, char *);
 
-    char *CreateAlbum(const char *user, const char *archive, const char *title);
+    Photohosting *GetPhotohosting() { return photohosting; }
 
     char *Authorise(const char *user, const char *password);
     char *GetUserBySession(const char *sid);

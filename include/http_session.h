@@ -7,6 +7,8 @@
 #include "tcp_session.h"
 
 
+class Photohosting;
+
 typedef enum {
     ok = 0,
     incomplete_request = -1,
@@ -16,6 +18,7 @@ typedef enum {
 
 class HttpSession: public AppLayerDriver {
     HttpServer *http_server;
+    Photohosting *photohosting;
 
     char *s_addr;
 

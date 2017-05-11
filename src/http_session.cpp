@@ -13,10 +13,12 @@
 #include "exceptions.h"
 #include "log.h"
 #include "multipart.h"
+#include "photohosting.h"
 
 
 HttpSession::HttpSession(TcpSession *_tcp_session, HttpServer *_http_server)
     : http_server(_http_server),
+    photohosting(_http_server->GetPhotohosting()),
     s_addr(NULL),
     read_buf(NULL),
     active(true),
@@ -172,6 +174,7 @@ void HttpSession::ProcessPhotosUpload()
     }
 
     try {
+        // TODO: get page title from somewhere
         char *album_path = CreateWebAlbum(user, "test_album");
         if (album_path) {
             response = new HttpResponse(http_see_other, request->minor_version, keep_alive);
@@ -277,22 +280,21 @@ void HttpSession::ProcessPostRequest()
 
 char *HttpSession::CreateWebAlbum(const char *user, const char *page_title)
 {
-    char *file_path = NULL;
+    char *archive_path = NULL;
     char *album_path = NULL;
 
     try {
-        file_path = UploadFile(user);
+        archive_path = UploadFile(user);
 
-        // TODO: get page title from somewhere
         LOG_I("Creating new album for user \'%s\'", user);
-        album_path = http_server->CreateAlbum(user, file_path, page_title);
+        album_path = photohosting->CreateAlbum(user, archive_path, page_title);
+        if (archive_path) free(archive_path);
 
         LOG_I("The album for user \'%s\' has been successfully created at %s", user, album_path);
 
-        if (file_path) free(file_path);
         return album_path;
     } catch (PhotohostingEx &) {
-        if (file_path) free(file_path);
+        if (archive_path) free(archive_path);
         throw;
     }
 }
@@ -311,6 +313,8 @@ char *HttpSession::UploadFile(const char *user)
 
         LOG_I("Got file \'%s\' from user %s (%d bytes)", name, user, file->size);
         saved_file_path = http_server->SaveFile(file, name);
+
+        return saved_file_path;
     } catch (PhotohostingEx &ex) {
         LOG_E("%s\n", ex.GetErrMsg());
 
@@ -319,8 +323,6 @@ char *HttpSession::UploadFile(const char *user)
 
         throw;
     }
-
-    return saved_file_path;
 }
 
 
