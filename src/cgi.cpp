@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
+#include <unistd.h>
 
 extern "C" {
 #include "ccgi.h"
@@ -26,6 +28,7 @@ Cgi::~Cgi()
 
 bool Cgi::Init()
 {
+    srand(time(NULL) ^ (getpid() << 16));
     return true;
 }
 
@@ -37,7 +40,10 @@ bool Cgi::Init()
 void Cgi::Routine()
 {
     char *req_method = getenv("REQUEST_METHOD");
-    if (!req_method) exit(-1);
+    if (!req_method) {
+        SetStatus(http_internal_error);
+        return;
+    }
 
     if (METHOD_IS("GET")) {
         ProcessGetRequest();
@@ -50,14 +56,54 @@ void Cgi::Routine()
 
 #undef METHOD_IS
 
+#define HTTP_RESPONSE_ENTRY(INT, ENUM, STATUS, BODY) \
+    case ENUM:                                       \
+        fputs("Status: " STATUS "\n", stdout);       \
+        break;
 
 void Cgi::SetStatus(http_status_t status)
 {
+    switch(status) {
+        HTTP_RESPONSE_GEN
+    }
+
+    CloseHeaders();
+}
+
+#undef HTTP_RESPONSE_ENTRY
+
+
+void Cgi::SetContentType(const char *type)
+{
+    fputs("Content-type: ", stdout);
+    fputs(type, stdout);
+    fputs("\n", stdout);
+
+    CloseHeaders();
 }
 
 
 void Cgi::SetCookie(const char *key, const char *value)
 {
+    fputs("Set-cookie: ", stdout);
+    fputs(key, stdout);
+    fputs("=", stdout);
+    fputs(value, stdout);
+    fputs("\n", stdout);
+
+    CloseHeaders();
+}
+
+
+void Cgi::CloseHeaders()
+{
+    fputs("\n", stdout);
+}
+
+
+void Cgi::Respond(const char *text)
+{
+    fputs(text, stdout);
 }
 
 
@@ -77,7 +123,10 @@ void Cgi::ProcessPostRequest()
     CGI_varlist *query_list = CGI_get_query(NULL);
 
     CGI_value query = CGI_lookup(query_list, "q");
-    if (!query) SetStatus(http_bad_request);
+    if (!query) {
+        SetStatus(http_not_found);
+        goto fin;
+    }
 
     if (QUERY_IS("upload_photos")) {
         ProcessUploadPhotos();
@@ -86,72 +135,72 @@ void Cgi::ProcessPostRequest()
     } else if (QUERY_IS("logout")) {
         ProcessLogout();
     } else {
-        SetStatus(http_bad_request);
+        SetStatus(http_not_found);
     }
 
+fin:
     CGI_free_varlist(query_list);
 }
 
 #undef QUERY_IS
 
 
+// TODO
 void Cgi::ProcessUploadPhotos()
 {
 }
 
+
 void Cgi::ProcessLogin()
 {
-    fputs("Content-type: text/plain\r\n\r\n", stdout);
-
     CGI_varlist *auth_data = CGI_get_post(NULL, NULL);
     if (!auth_data) {
         SetStatus(http_bad_request);
-        fputs("Login and password have not been provided\n", stdout);
+        Respond("Login and password have not been provided");
         return;
     }
 
     CGI_value user = CGI_lookup(auth_data, "login");
     CGI_value password = CGI_lookup(auth_data, "password");
     if (!user || !password) {
-        fputs("Missing login/password\n", stdout);
         SetStatus(http_bad_request);
-        CGI_free_varlist(auth_data);
-        return;
+        Respond("Missing login/password");
+        goto fin;
     }
 
     try {
         char *new_sid = photohosting->Authorise(user, password);
         if (!new_sid) {
             SetStatus(http_bad_request);
-            fputs("Incorrect login/password\n", stdout);
-            CGI_free_varlist(auth_data);
-            return;
+            Respond("Incorrect login/password");
+            goto fin;
         }
 
         SetCookie("sid", new_sid);
+        Respond("You have been successfully authorized");
 
         free(new_sid);
     } catch (NewSessionEx &) {
         SetStatus(http_internal_error);
-        CGI_free_varlist(auth_data);
     }
+
+fin:
+    CGI_free_varlist(auth_data);
 }
 
 void Cgi::ProcessLogout()
 {
-    fputs("Content-type: text/plain\r\n\r\n", stdout);
-
     CGI_varlist *cookies = CGI_get_cookie(NULL);
     if (!cookies) {
         SetStatus(http_bad_request);
-        fputs("You are not signed in\n", stdout);
+        Respond("You are not signed in");
         return;
     }
 
     CGI_value sid = CGI_lookup(cookies, "sid");
     if (!sid) {
         SetStatus(http_bad_request);
-        fputs("You are not signed in\n", stdout);
+        Respond("You are not signed in");
         goto fin;
     }
 
@@ -159,14 +208,16 @@ void Cgi::ProcessLogout()
         char *user = photohosting->GetUserBySession(sid);
         if (!user) {
             SetStatus(http_bad_request);
-            fputs("You are not signed in\n", stdout);
+            Respond("You are not signed in");
             goto fin;
         }
 
         free(user);
 
         photohosting->Logout(sid);
+
         SetCookie("sid", "");
+        Respond("You have successfully logged out");
     } catch (SystemEx &) {
         SetStatus(http_internal_error);
     }

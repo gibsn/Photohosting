@@ -19,8 +19,14 @@ class Cgi
     void ProcessLogin();
     void ProcessLogout();
 
+    // all these close headers
     void SetStatus(http_status_t status);
+    void SetContentType(const char *type);
     void SetCookie(const char *key, const char *value);
+
+    void CloseHeaders();
+
+    void Respond(const char *text);
 
 public:
     Cgi(const Config &cfg, Photohosting *_photohosting);
