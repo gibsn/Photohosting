@@ -17,6 +17,8 @@ class Cgi
     void ProcessLogin();
     void ProcessLogout();
 
+    // void SetStatus(http_status_t status);
+
 public:
     Cgi(const Config &cfg, Photohosting *_photohosting);
     ~Cgi();
