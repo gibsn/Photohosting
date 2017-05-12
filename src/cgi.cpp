@@ -1,10 +1,28 @@
-#include "photohosting.h"
+#include "cgi.h"
 
 #include "cfg.h"
+#include "photohosting.h"
 
 
-int main()
+Cgi::Cgi(const Config &cfg, Photohosting *_photohosting)
+    : photohosting(_photohosting)
+{
+}
+
+
+Cgi::~Cgi()
+{
+}
+
+
+bool Cgi::Init()
+{
+    return true;
+}
+
+
+void Cgi::Routine()
 {
 
-    return 0;
 }
+

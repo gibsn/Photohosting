@@ -163,7 +163,7 @@ SessionsList::~SessionsList()
 }
 
 
-void Auth::Init(const char *filepath, const char *path_to_tokens)
+bool Auth::Init(const char *filepath, const char *path_to_tokens)
 {
     tokens_path = strdup(path_to_tokens);
 
@@ -195,11 +195,11 @@ void Auth::Init(const char *filepath, const char *path_to_tokens)
     }
 
     fclose(file);
-    return;
+    return true;
 
 fin:
     LOG_E("Could not initialise auth");
-    exit(1);
+    return false;
 }
 
 

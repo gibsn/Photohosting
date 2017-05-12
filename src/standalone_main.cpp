@@ -24,7 +24,7 @@ int main(int argc, char **argv)
     LOG_I("Initialised config");
 
     Auth auth;
-    auth.Init(cfg.path_to_pwd, cfg.path_to_tokens);
+    if (!auth.Init(cfg.path_to_pwd, cfg.path_to_tokens)) return -1;
     LOG_I("Initialised auth");
 
     Photohosting photohosting(cfg.path_to_store, cfg.path_to_css, &auth);

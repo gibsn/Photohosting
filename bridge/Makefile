@@ -14,6 +14,9 @@ MULTIPARTPARSER_STATIC = libmultipart.a
 INIPARSER_DIR = ../$(EXTERNALS_BASEDIR)/iniparser
 INIPARSER_STATIC = libiniparser.a
 
+CCGI_DIR = ../$(EXTERNALS_BASEDIR)/ccgi-1.2
+CCGI_STATIC = libccgi.a
+
 
 WebAlbumCreator:
 	@echo "Compiling WebAlbumCreator"
@@ -41,12 +44,19 @@ iniparser:
 	cp $(INIPARSER_DIR)/src/iniparser.h $(INCLUDE_DIR)
 	cp $(INIPARSER_DIR)/src/dictionary.h $(INCLUDE_DIR)
 
+ccgi:
+	@echo "Compiling ccgi"
+	make -C $(CCGI_DIR) -f Makefile static
+	cp $(CCGI_DIR)/$(CCGI_STATIC) $(LIBRARY_DIR)
+	cp $(CCGI_DIR)/src/ccgi.h $(INCLUDE_DIR)
+
 
 clean:
 	make -C $(PICOHTTPPARSER_DIR) -f Makefile clean
 	make -C $(WEBALBUMCREATOR_DIR) -f Makefile clean
 	make -C $(MULTIPARTPARSER_DIR) -f Makefile clean
 	make -C $(INIPARSER_DIR) -f Makefile clean
+	make -C $(CCGI_DIR) -f Makefile clean
 
-.PHONY: WebAlbumCreator picohttpparser multipart_parser iniparser clean
+.PHONY: WebAlbumCreator picohttpparser multipart_parser iniparser ccgi clean
 
