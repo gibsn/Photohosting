@@ -2,8 +2,6 @@
 
 CXXFLAGS += -g -Wall
 CXXFLAGS += -Wno-unused-variable -Wno-unused-value -std=c++98 -fpermissive
-#Needed for proper libarchive work
-#CXXFLAGS += -D_FILE_OFFSET_BITS=64
 
 SRC_DIR = src
 INCLUDE_DIR = include
@@ -11,9 +9,39 @@ OBJ_DIR = obj
 DEPS_DIR = deps
 BRIDGE_DIR = bridge
 
-SRC_MODULES = $(wildcard $(SRC_DIR)/*.cpp)
-OBJ_MODULES = $(addprefix $(OBJ_DIR)/, $(notdir $(SRC_MODULES:.cpp=.o)))
-DEPS_MODULES = $(addprefix $(DEPS_DIR)/, $(notdir $(SRC_MODULES:.cpp=.d)))
+STANDALONE_SRC_MODULES = \
+	auth.cpp             \
+	cfg.cpp              \
+	common.cpp           \
+	exceptions.cpp       \
+	http_request.cpp     \
+	http_response.cpp    \
+	http_server.cpp      \
+	http_session.cpp     \
+	log.cpp              \
+	standalone.cpp       \
+	multipart.cpp        \
+	photohosting.cpp     \
+	tcp_server.cpp       \
+	tcp_session.cpp      \
+	web_album_creator_helper.cpp
+
+STANDALONE_OBJ_MODULES = $(addprefix $(OBJ_DIR)/, $(notdir $(STANDALONE_SRC_MODULES:.cpp=.o)))
+
+CGI_SRC_MODULES =    \
+	auth.cpp         \
+	cfg.cpp          \
+	common.cpp       \
+	exceptions.cpp   \
+	log.cpp          \
+	cgi.cpp          \
+	photohosting.cpp \
+	web_album_creator_helper.cpp
+
+CGI_OBJ_MODULES = $(addprefix $(OBJ_DIR)/, $(notdir $(CGI_SRC_MODULES:.cpp=.o)))
+
+TMP = $(addprefix $(DEPS_DIR)/, $(notdir $(wildcard $(SRC_MODULES)/*.cpp)))
+DEPS_MODULES = $(TMP:.cpp=.d)
 
 BRIDGE_TARGETS = picohttpparser WebAlbumCreator multipart_parser iniparser
 
@@ -25,8 +53,16 @@ LDFLAGS += -l wac -l pico -l multipart -l iniparser
 
 src_to_obj = $(addprefix $(OBJ_DIR)/, $(notdir $(1:.cpp=.o)))
 
-server: $(OBJ_MODULES)
-	$(CXX) $(CXXFLAGS) $(OBJ_MODULES) -o $@ $(LDFLAGS)
+STANDALONE = server
+CGI = photohosting.cgi
+
+
+$(STANDALONE): $(STANDALONE_OBJ_MODULES)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
+
+$(CGI): $(CGI_OBJ_MODULES)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
+
 
 ifneq ($(MAKECMDGOALS), clean)
 -include .bridge.touch
@@ -54,7 +90,8 @@ clean:
 	rm -rf $(BRIDGE_DIR)/lib
 	rm -rf $(BRIDGE_DIR)/bin
 	rm -f .bridge.touch
-	rm -f server
+	rm -f $(STANDALONE)
+	rm -f $(CGI)
 	make -C $(dir $(BRIDGE_DIR)/Makefile) -f Makefile clean
 
 clangcomp:
