@@ -40,7 +40,7 @@ CGI_SRC_MODULES =    \
 
 CGI_OBJ_MODULES = $(addprefix $(OBJ_DIR)/, $(notdir $(CGI_SRC_MODULES:.cpp=.o)))
 
-TMP = $(addprefix $(DEPS_DIR)/, $(notdir $(wildcard $(SRC_MODULES)/*.cpp)))
+TMP = $(addprefix $(DEPS_DIR)/, $(notdir $(wildcard $(SRC_DIR)/*.cpp)))
 DEPS_MODULES = $(TMP:.cpp=.d)
 
 BRIDGE_TARGETS = picohttpparser WebAlbumCreator multipart_parser iniparser
@@ -98,5 +98,3 @@ clangcomp:
 	@echo $(CXXFLAGS) | tr ' ' '\n' | grep -v 'Werror' > .clang_complete
 
 .PHONY: clangcomp clean
-
-
