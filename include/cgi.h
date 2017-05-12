@@ -10,6 +10,13 @@ class Cgi
 {
     Photohosting *photohosting;
 
+    void ProcessGetRequest();
+    void ProcessPostRequest();
+
+    void ProcessUploadPhotos();
+    void ProcessLogin();
+    void ProcessLogout();
+
 public:
     Cgi(const Config &cfg, Photohosting *_photohosting);
     ~Cgi();

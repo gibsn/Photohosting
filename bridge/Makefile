@@ -48,7 +48,7 @@ ccgi:
 	@echo "Compiling ccgi"
 	make -C $(CCGI_DIR) -f Makefile static
 	cp $(CCGI_DIR)/$(CCGI_STATIC) $(LIBRARY_DIR)
-	cp $(CCGI_DIR)/src/ccgi.h $(INCLUDE_DIR)
+	cp $(CCGI_DIR)/ccgi.h $(INCLUDE_DIR)
 
 
 clean:
