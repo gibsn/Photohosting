@@ -19,9 +19,11 @@ class Cgi
     void ProcessLogin();
     void ProcessLogout();
 
-    // all these close headers
+    // these close headers
     void SetStatus(http_status_t status);
     void SetContentType(const char *type);
+
+    // these dont
     void SetCookie(const char *key, const char *value);
     void SetLocation(const char *location);
 

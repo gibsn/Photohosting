@@ -90,8 +90,6 @@ void Cgi::SetCookie(const char *key, const char *value)
     fputs("=", stdout);
     fputs(value, stdout);
     fputs("\n", stdout);
-
-    CloseHeaders();
 }
 
 
@@ -118,7 +116,7 @@ void Cgi::Respond(const char *text)
 // All get requests are supposed to be processed by the HTTP server, not cgi
 void Cgi::ProcessGetRequest()
 {
-    SetStatus(http_internal_error);
+    SetStatus(http_bad_request);
 }
 
 

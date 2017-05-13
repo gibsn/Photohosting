@@ -248,12 +248,11 @@ void HttpSession::ProcessLogout()
             goto fin;
         }
 
+        photohosting->Logout(request->sid);
         LOG_I("User %s has signed out from %s", user, s_addr);
 
-        photohosting->Logout(request->sid);
-        response->SetCookie("sid", "");
-
         response = new HttpResponse(http_ok, request->minor_version, keep_alive);
+        response->SetCookie("sid", "");
     } catch (SystemEx &) {
         if (user) {
             LOG_E("Could not log out user %s", user);
