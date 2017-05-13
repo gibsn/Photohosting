@@ -87,7 +87,12 @@ ByteArray *read_file(const char *path)
 {
     int fd = open(path, O_RDONLY);
     if (fd == -1) {
-        LOG_E("Could not read file %s: %s", path, strerror(errno));
+        if (errno == ENOENT) {
+            LOG_W("Could not read file %s: %s", path, strerror(errno));
+        } else {
+            LOG_E("Could not read file %s: %s", path, strerror(errno));
+        }
+
         return NULL;
     }
 

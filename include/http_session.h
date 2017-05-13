@@ -1,11 +1,15 @@
 #ifndef HTTP_SESSION_H_SENTRY
 #define HTTP_SESSION_H_SENTRY
 
-#include "http_request.h"
-#include "http_response.h"
-#include "http_server.h"
-#include "tcp_session.h"
+#include "app_layer_driver.h"
 
+
+class Photohosting;
+class HttpServer;
+struct HttpRequest;
+struct HttpResponse;
+class TcpSession;
+struct ByteArray;
 
 typedef enum {
     ok = 0,
@@ -16,6 +20,7 @@ typedef enum {
 
 class HttpSession: public AppLayerDriver {
     HttpServer *http_server;
+    Photohosting *photohosting;
 
     char *s_addr;
 
@@ -40,7 +45,7 @@ class HttpSession: public AppLayerDriver {
 
     void Respond();
 
-    void ProcessAuth();
+    void ProcessLogin();
     void ProcessLogout();
 
     void ProcessPhotosUpload();

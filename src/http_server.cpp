@@ -14,7 +14,6 @@
 
 #include "WebAlbumCreator.h"
 
-#include "auth.h"
 #include "cfg.h"
 #include "common.h"
 #include "exceptions.h"
@@ -22,6 +21,8 @@
 #include "http_response.h"
 #include "http_session.h"
 #include "log.h"
+#include "photohosting.h"
+#include "tcp_session.h"
 #include "web_album_creator_helper.h"
 
 
@@ -89,11 +90,9 @@ char *HttpServer::SaveFile(ByteArray *file, char *name)
         if (file->size != n) {
             LOG_E("Could not save file %s: %s", full_path, strerror(errno));
             if (errno == ENOSPC) throw NoSpace();
-
             throw SaveFileEx();
         }
 
-        if (full_path) free(full_path);
         return full_path;
     }
     catch (PhotohostingEx &) {
@@ -103,92 +102,11 @@ char *HttpServer::SaveFile(ByteArray *file, char *name)
 }
 
 
-char *HttpServer::CreateAlbum(const char *user, const char *archive, const char *title)
-{
-    int random_id_len = 16;
-    char *random_id = gen_random_string(random_id_len);
 
-    char *user_path = make_user_path(path_to_static, user);
-
-    WebAlbumParams cfg = album_params_helper(user, user_path, random_id);
-    cfg.path_to_archive = archive;
-    cfg.web_page_title = title;
-    cfg.path_to_css = make_path_to_css(path_to_css);
-
-    album_creator_debug(cfg);
-    create_user_paths(user_path, cfg.path_to_unpack, cfg.path_to_thumbnails);
-
-    bool err = false;
-    // TODO make it the proper way
-    try {
-        CreateWebAlbum(cfg);
-    } catch (Wac::WebAlbumCreatorEx &ex) {
-        LOG_E("WebAlbumCreator: %s", ex.GetErrMsg());
-
-        if (clean_paths(cfg)) {
-            LOG_E("Could not clean paths after failing to create album");
-        } else {
-            LOG_I("Cleaned the paths after failing to create album");
-        }
-
-        err = true;
-    }
-
-    char *path = make_r_path_to_webpage(user, random_id);
-    if (remove(archive)) LOG_E("Could not delete %s: %s", archive, strerror(errno));
-
-    if (random_id) free(random_id);
-    if (user_path) free(user_path);
-    free_album_params(cfg);
-
-    if (err) {
-        LOG_E("Could not create album %s for user %s", title, user);
-        throw PhotohostingEx();
-    }
-
-    return path;
-}
-
-
-char *HttpServer::Authorise(const char *user, const char *password)
-{
-    if (auth->Check(user, password)) {
-        return auth->NewSession(user);
-    }
-
-    return NULL;
-}
-
-
-void HttpServer::Logout(const char *sid)
-{
-    if (*sid == '\0') return;
-
-    return auth->DeleteSession(sid);
-}
-
-
-// throws GetUserBySessionEx
-char *HttpServer::GetUserBySession(const char *sid) {
-    if (!sid || *sid == '\0') return NULL;
-
-    return auth->GetUserBySession(sid);
-}
-
-
-HttpServer::HttpServer()
-    : path_to_static(NULL),
-    path_to_static_len(0),
-    path_to_tmp_files(NULL),
-    auth(NULL)
-{
-}
-
-
-HttpServer::HttpServer(const Config &cfg, AuthDriver *_auth)
+HttpServer::HttpServer(const Config &cfg, Photohosting *_photohosting)
     : TcpServer(cfg),
     path_to_static_len(0),
-    auth(_auth)
+    photohosting(_photohosting)
 {
     path_to_static = strdup(cfg.path_to_static);
     assert(path_to_static);
@@ -197,8 +115,7 @@ HttpServer::HttpServer(const Config &cfg, AuthDriver *_auth)
     path_to_tmp_files = strdup(cfg.path_to_tmp_files);
     assert(path_to_tmp_files);
 
-    //TODO: will make it the proper way when I have config
-    path_to_css = strdup("css/");
+    path_to_css = cfg.path_to_css;
     assert(path_to_css);
 }
 

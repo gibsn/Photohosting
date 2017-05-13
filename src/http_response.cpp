@@ -115,50 +115,17 @@ void HttpResponse::AddDateHeader()
 }
 
 
+#define HTTP_RESPONSE_ENTRY(INT, ENUM, STATUS, BODY) \
+    case ENUM:                                       \
+        s_code = STATUS;                             \
+        break;                                       \
+
 void HttpResponse::AddStatusLine()
 {
     const char *s_code;
 
     switch(code) {
-    case http_continue:
-        s_code = "100 CONTINUE";
-        break;
-    case http_ok:
-        s_code = "200 OK";
-        break;
-    case http_created:
-        s_code = "201 CREATED";
-        break;
-    case http_no_content:
-        s_code = "204 NO CONTENT";
-        break;
-    case http_see_other:
-        s_code = "303 SEE OTHER";
-        break;
-    case http_permanent_redirect:
-        s_code = "308 PERMANENT REDIRECT";
-        break;
-    case http_bad_request:
-        s_code = "400 BAD REQUEST";
-        break;
-    case http_unauthorized:
-        s_code = "401 UNAUTHORIZED";
-        break;
-    case http_forbidden:
-        s_code = "403 FORBIDDEN";
-        break;
-    case http_not_found:
-        s_code = "404 NOT FOUND";
-        break;
-    case http_internal_error:
-        s_code = "500 INTERNAL SERVER ERROR";
-        break;
-    case http_not_implemented:
-        s_code = "501 NOT IMPLEMENTED";
-        break;
-    case http_insufficient_storage:
-        s_code = "507 INSUFFICIENT STORAGE";
-        break;
+        HTTP_RESPONSE_GEN
     }
 
     int len = sizeof("HTTP/1.X \r\n") - 1 + strlen(s_code);
@@ -172,6 +139,7 @@ void HttpResponse::AddStatusLine()
     response_len += len;
 }
 
+#undef HTTP_RESPONSE_ENTRY
 
 void HttpResponse::AddConnectionHeader(bool keep_alive)
 {
@@ -226,32 +194,17 @@ void HttpResponse::AddBody()
 }
 
 
+#define HTTP_RESPONSE_ENTRY(INT, ENUM, STATUS, BODY) \
+    case ENUM:                                       \
+        str = BODY;                                  \
+        break;                                       \
+
 void HttpResponse::AddDefaultBodies()
 {
     const char *str = NULL;
 
     switch(code) {
-    case http_ok:
-        str = "OK";
-        break;
-    case http_bad_request:
-        str = "Bad request";
-        break;
-    case http_unauthorized:
-        str = "You are not allowed to do this, please authorise";
-        break;
-    case http_forbidden:
-        str = "You are not allowed to do this, please authorise";
-        break;
-    case http_not_found:
-        str = "Not found";
-        break;
-    case http_internal_error:
-        str = "Internal server error";
-        break;
-    case http_insufficient_storage:
-        str = "Insufficient storage";
-        break;
+        HTTP_RESPONSE_GEN
     default:
         ;
     }
@@ -262,4 +215,4 @@ void HttpResponse::AddDefaultBodies()
     }
 }
 
-
+#undef HTTP_RESPONSE_ENTRY

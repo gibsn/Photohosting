@@ -11,12 +11,18 @@
 #include "auth.h"
 #include "common.h"
 #include "exceptions.h"
+#include "http_request.h"
+#include "http_response.h"
+#include "http_server.h"
+#include "tcp_session.h"
 #include "log.h"
 #include "multipart.h"
+#include "photohosting.h"
 
 
 HttpSession::HttpSession(TcpSession *_tcp_session, HttpServer *_http_server)
     : http_server(_http_server),
+    photohosting(_http_server->GetPhotohosting()),
     s_addr(NULL),
     read_buf(NULL),
     active(true),
@@ -158,7 +164,7 @@ void HttpSession::ProcessPhotosUpload()
     char *user = NULL;
 
     try {
-        user = http_server->GetUserBySession(request->sid);
+        user = photohosting->GetUserBySession(request->sid);
     } catch (GetUserBySessionEx &) {
         LOG_E("Could not check if client is authorised");
         response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
@@ -172,6 +178,7 @@ void HttpSession::ProcessPhotosUpload()
     }
 
     try {
+        // TODO: get page title from somewhere
         char *album_path = CreateWebAlbum(user, "test_album");
         if (album_path) {
             response = new HttpResponse(http_see_other, request->minor_version, keep_alive);
@@ -191,7 +198,7 @@ void HttpSession::ProcessPhotosUpload()
 }
 
 
-void HttpSession::ProcessAuth()
+void HttpSession::ProcessLogin()
 {
     char *new_sid = NULL;
     char *user = Auth::ParseLoginFromReq(request->body, request->body_len);
@@ -202,7 +209,7 @@ void HttpSession::ProcessAuth()
     }
 
     try {
-        new_sid = http_server->Authorise(user, password);
+        new_sid = photohosting->Authorise(user, password);
         if (!new_sid) {
             response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
             LOG_I("Client from %s failed to authorise as user %s", s_addr, user);
@@ -230,7 +237,7 @@ void HttpSession::ProcessLogout()
     char *user = NULL;
 
     try {
-        user = http_server->GetUserBySession(request->sid);
+        user = photohosting->GetUserBySession(request->sid);
 
         if (!user) {
             LOG_W("Unauthorised user from %s attempted to sign out", s_addr);
@@ -239,7 +246,7 @@ void HttpSession::ProcessLogout()
             goto fin;
         }
 
-        http_server->Logout(request->sid);
+        photohosting->Logout(request->sid);
 
         LOG_I("User %s has signed out from %s", user, s_addr);
         response = new HttpResponse(http_ok, request->minor_version, keep_alive);
@@ -260,8 +267,8 @@ void HttpSession::ProcessPostRequest()
 
     if (LOCATION_IS("/upload/photos")) {
         ProcessPhotosUpload();
-    } else if (LOCATION_IS("/auth")) {
-        ProcessAuth();
+    } else if (LOCATION_IS("/login")) {
+        ProcessLogin();
     } else if (LOCATION_IS("/logout")) {
         ProcessLogout();
     } else {
@@ -277,22 +284,21 @@ void HttpSession::ProcessPostRequest()
 
 char *HttpSession::CreateWebAlbum(const char *user, const char *page_title)
 {
-    char *file_path = NULL;
+    char *archive_path = NULL;
     char *album_path = NULL;
 
     try {
-        file_path = UploadFile(user);
+        archive_path = UploadFile(user);
 
-        // TODO: get page title from somewhere
         LOG_I("Creating new album for user \'%s\'", user);
-        album_path = http_server->CreateAlbum(user, file_path, page_title);
+        album_path = photohosting->CreateAlbum(user, archive_path, page_title);
+        if (archive_path) free(archive_path);
 
         LOG_I("The album for user \'%s\' has been successfully created at %s", user, album_path);
 
-        if (file_path) free(file_path);
         return album_path;
     } catch (PhotohostingEx &) {
-        if (file_path) free(file_path);
+        if (archive_path) free(archive_path);
         throw;
     }
 }
@@ -311,6 +317,8 @@ char *HttpSession::UploadFile(const char *user)
 
         LOG_I("Got file \'%s\' from user %s (%d bytes)", name, user, file->size);
         saved_file_path = http_server->SaveFile(file, name);
+
+        return saved_file_path;
     } catch (PhotohostingEx &ex) {
         LOG_E("%s\n", ex.GetErrMsg());
 
@@ -319,8 +327,6 @@ char *HttpSession::UploadFile(const char *user)
 
         throw;
     }
-
-    return saved_file_path;
 }
 
 
