@@ -7,7 +7,7 @@
 #include "cgi.h"
 #include "log.h"
 
-#define PATH_TO_CFG "./config.ini"
+#define PATH_TO_CFG "./photohosting.ini"
 
 
 int main()
