@@ -186,11 +186,13 @@ void HttpSession::ProcessPhotosUpload()
             free(album_path);
         } else {
             response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
+            response->SetBody("Bad data");
         }
     } catch (NoSpace &) {
         response = new HttpResponse(http_insufficient_storage, request->minor_version, keep_alive);
-        response->SetBody("Bad data");
     } catch (SystemEx &) {
+        response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
+    } catch (PhotohostingEx &) {
         response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
     }
 
@@ -200,7 +202,6 @@ void HttpSession::ProcessPhotosUpload()
 
 void HttpSession::ProcessLogin()
 {
-    char *new_sid = NULL;
     char *user = Auth::ParseLoginFromReq(request->body, request->body_len);
     char *password = Auth::ParsePasswordFromReq(request->body, request->body_len);
     if (!user || !password) {
@@ -209,26 +210,27 @@ void HttpSession::ProcessLogin()
     }
 
     try {
-        new_sid = photohosting->Authorise(user, password);
+        char *new_sid = photohosting->Authorise(user, password);
         if (!new_sid) {
             response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
             LOG_I("Client from %s failed to authorise as user %s", s_addr, user);
             goto fin;
         }
+
+        LOG_I("User %s has authorised from %s", user, s_addr);
+
+        response = new HttpResponse(http_ok, request->minor_version, keep_alive);
+        response->SetCookie("sid", new_sid);
+
+        free(new_sid);
     } catch (NewSessionEx &) {
         response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
         goto fin;
     }
 
-    LOG_I("User %s has authorised from %s", user, s_addr);
-
-    response = new HttpResponse(http_ok, request->minor_version, keep_alive);
-    response->SetCookie("sid", new_sid);
-
 fin:
     if (user) free(user);
     if (password) free(password);
-    if (new_sid) free(new_sid);
 }
 
 
@@ -247,12 +249,17 @@ void HttpSession::ProcessLogout()
         }
 
         photohosting->Logout(request->sid);
-
         LOG_I("User %s has signed out from %s", user, s_addr);
+
         response = new HttpResponse(http_ok, request->minor_version, keep_alive);
         response->SetCookie("sid", "");
     } catch (SystemEx &) {
-        LOG_E("Could not log out user %s", user);
+        if (user) {
+            LOG_E("Could not log out user %s", user);
+        } else {
+            LOG_E("Could not log out client from %s", s_addr);
+        }
+
         response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
     }
 
@@ -316,7 +323,7 @@ char *HttpSession::UploadFile(const char *user)
         if (!file || !name) throw HttpBadFile(user);
 
         LOG_I("Got file \'%s\' from user %s (%d bytes)", name, user, file->size);
-        saved_file_path = http_server->SaveFile(file, name);
+        saved_file_path = photohosting->SaveFile(file, name);
 
         return saved_file_path;
     } catch (PhotohostingEx &ex) {

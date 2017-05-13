@@ -19,7 +19,7 @@ STANDALONE_SRC_MODULES = \
 	http_server.cpp      \
 	http_session.cpp     \
 	log.cpp              \
-	standalone.cpp       \
+	standalone_main.cpp  \
 	multipart.cpp        \
 	photohosting.cpp     \
 	tcp_server.cpp       \
@@ -35,21 +35,22 @@ CGI_SRC_MODULES =    \
 	exceptions.cpp   \
 	log.cpp          \
 	cgi.cpp          \
+	cgi_main.cpp     \
 	photohosting.cpp \
 	web_album_creator_helper.cpp
 
 CGI_OBJ_MODULES = $(addprefix $(OBJ_DIR)/, $(notdir $(CGI_SRC_MODULES:.cpp=.o)))
 
-TMP = $(addprefix $(DEPS_DIR)/, $(notdir $(wildcard $(SRC_MODULES)/*.cpp)))
+TMP = $(addprefix $(DEPS_DIR)/, $(notdir $(wildcard $(SRC_DIR)/*.cpp)))
 DEPS_MODULES = $(TMP:.cpp=.d)
 
-BRIDGE_TARGETS = picohttpparser WebAlbumCreator multipart_parser iniparser
+BRIDGE_TARGETS = picohttpparser WebAlbumCreator multipart_parser iniparser ccgi
 
 CXXFLAGS += -I$(INCLUDE_DIR)
 CXXFLAGS += -I$(BRIDGE_DIR)/include
 
 LDFLAGS = -L $(BRIDGE_DIR)/lib/
-LDFLAGS += -l wac -l pico -l multipart -l iniparser
+LDFLAGS += -l wac -l pico -l multipart -l iniparser -l ccgi
 
 src_to_obj = $(addprefix $(OBJ_DIR)/, $(notdir $(1:.cpp=.o)))
 
@@ -57,11 +58,17 @@ STANDALONE = server
 CGI = photohosting.cgi
 
 
+sa: $(STANDALONE)
+
 $(STANDALONE): $(STANDALONE_OBJ_MODULES)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
+cgi: $(CGI)
+
 $(CGI): $(CGI_OBJ_MODULES)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
+
+.PHONY: cgi sa
 
 
 ifneq ($(MAKECMDGOALS), clean)
@@ -98,5 +105,3 @@ clangcomp:
 	@echo $(CXXFLAGS) | tr ' ' '\n' | grep -v 'Werror' > .clang_complete
 
 .PHONY: clangcomp clean
-
-

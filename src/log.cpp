@@ -13,6 +13,11 @@ void get_pid_for_logger()
 
 void set_log_level(const char *_log_level)
 {
+    if (!_log_level) {
+        log_level = 0;
+        return;
+    }
+
     if (!strcmp(_log_level, "LOG_ERR")) {
         log_level = LOG_ERR;
     } else if (!strcmp(_log_level, "LOG_WARNING")) {

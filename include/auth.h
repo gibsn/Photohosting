@@ -103,7 +103,7 @@ public:
     Auth(): tokens_path(NULL) {};
     ~Auth() { if (tokens_path) free(tokens_path); };
 
-    void Init(const char *filepath, const char *path_to_tokens);
+    bool Init(const char *filepath, const char *path_to_tokens);
 
     bool Check(const char *_login, const char *_password) const;
     char *NewSession(const char *user);

@@ -71,38 +71,6 @@ ByteArray *HttpServer::GetFileByLocation(const char *path)
 }
 
 
-char *HttpServer::SaveFile(ByteArray *file, char *name)
-{
-    //TODO: name can be too long
-    char *full_path = (char *)malloc(strlen(path_to_tmp_files) + 2 + strlen(name));
-    strcpy(full_path, path_to_tmp_files);
-    strcat(full_path, "/");
-    strcat(full_path, name);
-
-    int fd = open(full_path, O_CREAT | O_WRONLY, 0666);
-    try {
-        if (fd == -1) {
-            LOG_E("Could not save file %s: %s", full_path, strerror(errno));
-            throw SaveFileEx();
-        }
-
-        int n = write(fd, file->data, file->size);
-        if (file->size != n) {
-            LOG_E("Could not save file %s: %s", full_path, strerror(errno));
-            if (errno == ENOSPC) throw NoSpace();
-            throw SaveFileEx();
-        }
-
-        return full_path;
-    }
-    catch (PhotohostingEx &) {
-        if (full_path) free(full_path);
-        throw;
-    }
-}
-
-
-
 HttpServer::HttpServer(const Config &cfg, Photohosting *_photohosting)
     : TcpServer(cfg),
     path_to_static_len(0),
@@ -112,9 +80,6 @@ HttpServer::HttpServer(const Config &cfg, Photohosting *_photohosting)
     assert(path_to_static);
     path_to_static_len = strlen(path_to_static);
 
-    path_to_tmp_files = strdup(cfg.path_to_tmp_files);
-    assert(path_to_tmp_files);
-
     path_to_css = cfg.path_to_css;
     assert(path_to_css);
 }
@@ -123,7 +88,6 @@ HttpServer::HttpServer(const Config &cfg, Photohosting *_photohosting)
 HttpServer::~HttpServer()
 {
     if (path_to_static) free(path_to_static);
-    if (path_to_tmp_files) free(path_to_tmp_files);
     if (path_to_css) free(path_to_css);
 }
 
