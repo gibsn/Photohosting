@@ -110,6 +110,7 @@ void Cgi::CloseHeaders()
 void Cgi::Respond(const char *text)
 {
     fputs(text, stdout);
+    fputs("\n", stdout);
 }
 
 
@@ -192,7 +193,7 @@ void Cgi::ProcessUploadPhotos()
         multipart = CGI_get_post(NULL, tmp_file_path);
         free(tmp_file_path);
         if (!multipart) {
-            SetStatus(http_bad_request);
+            SetStatus(http_internal_error);
             goto fin;
         }
 
@@ -254,6 +255,7 @@ void Cgi::ProcessLogin()
         }
 
         SetCookie("sid", new_sid);
+        CloseHeaders();
         Respond("You have been successfully authorized");
 
         free(new_sid);
@@ -294,8 +296,9 @@ void Cgi::ProcessLogout()
         photohosting->Logout(sid);
 
         SetCookie("sid", "");
+        CloseHeaders();
         Respond("You have successfully logged out");
-    } catch (SystemEx &) {
+    } catch (PhotohostingEx &) {
         SetStatus(http_internal_error);
     }
 
