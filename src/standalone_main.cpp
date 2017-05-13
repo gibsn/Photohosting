@@ -27,7 +27,7 @@ int main(int argc, char **argv)
     if (!auth.Init(cfg.path_to_pwd, cfg.path_to_tokens)) return -1;
     LOG_I("Initialised auth");
 
-    Photohosting photohosting(cfg.path_to_store, cfg.path_to_css, &auth);
+    Photohosting photohosting(cfg, &auth);
 
     LOG_I("Starting server");
     HttpServer server(cfg, &photohosting);
