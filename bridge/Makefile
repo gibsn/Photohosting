@@ -24,6 +24,7 @@ WebAlbumCreator:
 	cp $(WEBALBUMCREATOR_DIR)/$(WEBALBUMCREATOR_STATIC) $(LIBRARY_DIR)
 	cp $(WEBALBUMCREATOR_DIR)/include/WebAlbumCreator.h $(INCLUDE_DIR)
 	cp $(WEBALBUMCREATOR_DIR)/include/Exceptions.h $(INCLUDE_DIR)
+	cp -R $(WEBALBUMCREATOR_DIR)/css ../public_html
 
 picohttpparser:
 	@echo "Compiling picohttpparser"

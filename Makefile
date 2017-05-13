@@ -96,6 +96,7 @@ clean:
 	rm -rf $(BRIDGE_DIR)/include
 	rm -rf $(BRIDGE_DIR)/lib
 	rm -rf $(BRIDGE_DIR)/bin
+	rm -rf public_html/css
 	rm -f .bridge.touch
 	rm -f $(STANDALONE)
 	rm -f $(CGI)

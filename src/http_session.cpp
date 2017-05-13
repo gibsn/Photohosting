@@ -147,7 +147,8 @@ void HttpSession::ProcessGetRequest()
     char *path = strndup(request->path, request->path_len);
 
     if (LOCATION_IS("/")) {
-        response = new HttpResponse(http_ok, request->minor_version, keep_alive);
+        response = new HttpResponse(http_see_other, request->minor_version, keep_alive);
+        response->AddLocationHeader("/static/index.html");
     } else if (LOCATION_STARTS_WITH("/static/")) {
         ProcessStatic(path);
     } else {

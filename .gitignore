@@ -12,6 +12,8 @@ server
 photohosting.cgi
 users
 
+public_html/css
+
 config_local.ini
 
 externals/WebAlbumCreator
