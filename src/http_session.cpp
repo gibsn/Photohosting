@@ -186,11 +186,13 @@ void HttpSession::ProcessPhotosUpload()
             free(album_path);
         } else {
             response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
+            response->SetBody("Bad data");
         }
     } catch (NoSpace &) {
         response = new HttpResponse(http_insufficient_storage, request->minor_version, keep_alive);
-        response->SetBody("Bad data");
     } catch (SystemEx &) {
+        response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
+    } catch (PhotohostingEx &) {
         response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
     }
 
@@ -322,7 +324,7 @@ char *HttpSession::UploadFile(const char *user)
         if (!file || !name) throw HttpBadFile(user);
 
         LOG_I("Got file \'%s\' from user %s (%d bytes)", name, user, file->size);
-        saved_file_path = http_server->SaveFile(file, name);
+        saved_file_path = photohosting->SaveFile(file, name);
 
         return saved_file_path;
     } catch (PhotohostingEx &ex) {

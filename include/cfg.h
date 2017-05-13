@@ -23,11 +23,11 @@
     CFG_ENTRY(n_workers,         "server",       "workers",           INT,    2)          \
     CFG_ENTRY(log_level,         "server",       "log_level",         STRING, "LOG_INFO") \
     CFG_ENTRY(path_to_static,    "server",       "path_to_static",    STRING, ".")        \
-    CFG_ENTRY(path_to_tmp_files, "server",       "path_to_tmp_files", STRING, ".")        \
     CFG_ENTRY(runas,             "server",       "runas",             STRING, NULL)       \
                                                                                           \
     CFG_ENTRY(path_to_css,       "photohosting", "path_to_css",       STRING, ".")        \
     CFG_ENTRY(path_to_store,     "photohosting", "path_to_store",     STRING, ".")        \
+    CFG_ENTRY(path_to_tmp_files, "photohosting", "path_to_tmp_files", STRING, ".")        \
                                                                                           \
     CFG_ENTRY(path_to_tokens,    "auth",         "path_to_tokens",    STRING, ".")        \
     CFG_ENTRY(path_to_pwd,       "auth",         "users",             STRING, "./users")

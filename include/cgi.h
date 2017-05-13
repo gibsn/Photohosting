@@ -23,6 +23,7 @@ class Cgi
     void SetStatus(http_status_t status);
     void SetContentType(const char *type);
     void SetCookie(const char *key, const char *value);
+    void SetLocation(const char *location);
 
     void CloseHeaders();
 

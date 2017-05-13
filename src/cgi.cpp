@@ -95,6 +95,14 @@ void Cgi::SetCookie(const char *key, const char *value)
 }
 
 
+void Cgi::SetLocation(const char *location)
+{
+    fputs("Location: ", stdout);
+    fputs(location, stdout);
+    fputs("\n", stdout);
+}
+
+
 void Cgi::CloseHeaders()
 {
     fputs("\n", stdout);
@@ -148,6 +156,77 @@ fin:
 // TODO
 void Cgi::ProcessUploadPhotos()
 {
+    char *user = NULL;
+    CGI_varlist *multipart = NULL;
+    CGI_varlist *cookies = CGI_get_cookie(NULL);
+    if (!cookies) {
+        SetStatus(http_forbidden);
+        Respond("You are not signed in");
+        return;
+    }
+
+    CGI_value sid = CGI_lookup(cookies, "sid");
+    if (!sid) {
+        SetStatus(http_forbidden);
+        Respond("You are not signed in");
+        goto fin;
+    }
+
+    try {
+        user = photohosting->GetUserBySession(sid);
+        if (!user) {
+            SetStatus(http_forbidden);
+            Respond("You are not signed in");
+            goto fin;
+        }
+    } catch (GetUserBySessionEx &) {
+        SetStatus(http_internal_error);
+        goto fin;
+    }
+
+    try {
+        const char *path_to_tmp_files = photohosting->GetPathToTmpFiles();
+        char *tmp_file_path = (char *)malloc(strlen(path_to_tmp_files) + 1 + sizeof "photosXXXXXX");
+        strcpy(tmp_file_path, path_to_tmp_files);
+        strcat(tmp_file_path, "/");
+        strcat(tmp_file_path, "photosXXXXXX");
+
+        multipart = CGI_get_post(NULL, tmp_file_path);
+        free(tmp_file_path);
+        if (!multipart) {
+            SetStatus(http_bad_request);
+            goto fin;
+        }
+
+        CGI_value archive = CGI_lookup(multipart, "file");
+        if (!archive) {
+            SetStatus(http_bad_request);
+            goto fin;
+        }
+
+        // TODO: get page title from somewhere
+        char *album_path = photohosting->CreateAlbum(user, archive, "test_album");
+        if (album_path) {
+            SetLocation(album_path);
+            SetStatus(http_see_other);
+            free(album_path);
+        } else {
+            SetStatus(http_bad_request);
+            Respond("Bad data");
+        }
+        //TODO now these 2 exs are not being thrown
+    } catch (NoSpace &) {
+        SetStatus(http_insufficient_storage);
+    } catch (SystemEx &) {
+        SetStatus(http_internal_error);
+    } catch (PhotohostingEx &) {
+        SetStatus(http_internal_error);
+    }
+
+fin:
+    if (user) free(user);
+    CGI_free_varlist(cookies);
+    CGI_free_varlist(multipart);
 }
 
 

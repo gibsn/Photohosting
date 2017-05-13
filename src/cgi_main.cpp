@@ -24,7 +24,7 @@ int main()
     Auth auth;
     if (!auth.Init(cfg.path_to_pwd, cfg.path_to_tokens)) return -1;
 
-    Photohosting photohosting(cfg.path_to_store, cfg.path_to_css, &auth);
+    Photohosting photohosting(cfg, &auth);
 
     Cgi cgi(cfg, &photohosting);
     if (!cgi.Init()) return -1;

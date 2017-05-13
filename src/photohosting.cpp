@@ -1,30 +1,31 @@
 #include "photohosting.h"
 
 #include <errno.h>
+#include <fcntl.h>
 
 #include "WebAlbumCreator.h"
 
 #include "auth.h"
+#include "cfg.h"
 #include "common.h"
 #include "exceptions.h"
 #include "log.h"
 #include "web_album_creator_helper.h"
 
 
-Photohosting::Photohosting(
-    const char *_path_to_static,
-    const char *_relative_path_to_css,
-    AuthDriver *_auth)
+Photohosting::Photohosting(Config &cfg, AuthDriver *_auth)
     : auth(_auth)
 {
-    path_to_static = strdup(_path_to_static);
-    relative_path_to_css = strdup(_relative_path_to_css);
+    path_to_store = strdup(cfg.path_to_store);
+    path_to_tmp_files = strdup(cfg.path_to_tmp_files);
+    relative_path_to_css = strdup(cfg.path_to_css);
 }
 
 
 Photohosting::~Photohosting()
 {
-    if (path_to_static) free(path_to_static);
+    if (path_to_store) free(path_to_store);
+    if (path_to_tmp_files) free(path_to_tmp_files);
     if (relative_path_to_css) free(relative_path_to_css);
 }
 
@@ -45,12 +46,44 @@ void Photohosting::_CreateAlbum(const WebAlbumParams &cfg)
     }
 }
 
+
+char *Photohosting::SaveFile(ByteArray *file, char *name)
+{
+    //TODO: name can be too long
+    char *full_path = (char *)malloc(strlen(path_to_tmp_files) + 2 + strlen(name));
+    strcpy(full_path, path_to_tmp_files);
+    strcat(full_path, "/");
+    strcat(full_path, name);
+
+    int fd = open(full_path, O_CREAT | O_WRONLY, 0666);
+    try {
+        if (fd == -1) {
+            LOG_E("Could not save file %s: %s", full_path, strerror(errno));
+            throw SaveFileEx();
+        }
+
+        int n = write(fd, file->data, file->size);
+        if (file->size != n) {
+            LOG_E("Could not save file %s: %s", full_path, strerror(errno));
+            if (errno == ENOSPC) throw NoSpace();
+            throw SaveFileEx();
+        }
+
+        return full_path;
+    }
+    catch (PhotohostingEx &) {
+        if (full_path) free(full_path);
+        throw;
+    }
+}
+
+
 char *Photohosting::CreateAlbum(const char *user, const char *archive, const char *title)
 {
     int random_id_len = 16;
     char *random_id = gen_random_string(random_id_len);
 
-    char *user_path = make_user_path(path_to_static, user);
+    char *user_path = make_user_path(path_to_store, user);
 
     WebAlbumParams cfg = album_params_helper(user, user_path, random_id);
     cfg.path_to_archive = archive;

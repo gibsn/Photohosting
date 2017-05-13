@@ -13,7 +13,6 @@ class HttpServer: public TcpServer {
     char *path_to_static;
     int path_to_static_len; // not to use strlen every time
 
-    char *path_to_tmp_files;
     char *path_to_css; // relatively to path_to_static
 
     Photohosting *photohosting;
