@@ -4,6 +4,8 @@
 
 class AuthDriver {
 public:
+    virtual ~AuthDriver() {};
+
     // throw CheckEx in case of error
     virtual bool Check(const char *_login, const char *password) const = 0;
 
