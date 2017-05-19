@@ -9,25 +9,16 @@
 #include "log.h"
 
 
-#define PORT_INIT 0
-#define ADDR_INIT NULL
-#define N_WORKERS_INIT 0
-#define LOG_LEVEL_INIT -1
-#define PATH_TO_STATIC_INIT NULL
-#define PATH_TO_TMP_FILES_INIT NULL
-#define PATH_TO_TOKENS_INIT NULL
-#define PATH_TO_PWD_INIT NULL
-#define RUNAS_INIT NULL
-
-
 #define CFG_INIT CFG_GEN
 #define CFG_ENTRY(VAR, SECTION, NAME, TYPE, DEF_VALUE) \
     VAR = CFG_##TYPE##_DEF_VALUE;
+
 Config::Config()
     : path_to_cfg(NULL)
 {
     CFG_INIT
 }
+
 #undef CFG_ENTRY
 #undef CFG_INIT
 
@@ -35,12 +26,14 @@ Config::Config()
 #define CFG_FREE CFG_GEN
 #define CFG_ENTRY(VAR, SECTION, NAME, TYPE, DEF_VALUE) \
     CFG_##TYPE##_FREE(VAR)
+
 Config::~Config()
 {
     if (path_to_cfg) free(path_to_cfg);
 
     CFG_FREE
 }
+
 #undef CFG_ENTRY
 #undef CFG_FREE
 

@@ -54,7 +54,7 @@ class HttpSession: public AppLayerDriver {
     char *UploadFile(const char *);
     char *CreateWebAlbum(const char *user, const char *page_title);
 
-    ByteArray *GetFileFromRequest(char **) const;
+    ByteArray *GetFileFromRequest() const;
 
 public:
     HttpSession(TcpSession *, HttpServer *);

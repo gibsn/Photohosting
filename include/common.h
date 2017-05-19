@@ -26,7 +26,10 @@ bool process_cmd_arguments(int argc, char **argv, Config &cfg);
 void hexdump(uint8_t *, size_t);
 ByteArray *read_file(const char *);
 bool file_exists(const char *);
-char *gen_random_string(int);
+
+//this will come from WebAlbumCreator
+char *_gen_random_string(int length);
+
 int mkdir_p(const char *, mode_t);
 int rm_rf(const char *path);
 bool change_user(const char *runas);

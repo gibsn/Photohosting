@@ -25,8 +25,6 @@ public:
     HttpServer(const Config &cfg, Photohosting *photohosting);
     virtual ~HttpServer();
 
-    char *SaveFile(ByteArray *, char *);
-
     ByteArray *GetFileByLocation(const char *);
     Photohosting *GetPhotohosting() { return photohosting; }
 };

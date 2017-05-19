@@ -47,32 +47,33 @@ void Photohosting::_CreateAlbum(const WebAlbumParams &cfg)
 }
 
 
-char *Photohosting::SaveFile(ByteArray *file, char *name)
+char *Photohosting::SaveTmpFile(ByteArray *file)
 {
-    //TODO: name can be too long
-    char *full_path = (char *)malloc(strlen(path_to_tmp_files) + 2 + strlen(name));
+    char *full_path = (char *)malloc(strlen(path_to_tmp_files) + 1 + sizeof "tmpXXXXXX");
     strcpy(full_path, path_to_tmp_files);
     strcat(full_path, "/");
-    strcat(full_path, name);
+    strcat(full_path, "tmpXXXXXX");
 
-    int fd = open(full_path, O_CREAT | O_WRONLY, 0666);
+    int fd = mkstemp(full_path);
     try {
         if (fd == -1) {
-            LOG_E("Could not save file %s: %s", full_path, strerror(errno));
+            LOG_E("Could not save tmp file %s: %s", full_path, strerror(errno));
             throw SaveFileEx();
         }
 
         int n = write(fd, file->data, file->size);
         if (file->size != n) {
-            LOG_E("Could not save file %s: %s", full_path, strerror(errno));
+            LOG_E("Could not save tmp file %s: %s", full_path, strerror(errno));
             if (errno == ENOSPC) throw NoSpace();
             throw SaveFileEx();
         }
 
+        close(fd);
         return full_path;
     }
     catch (PhotohostingEx &) {
-        if (full_path) free(full_path);
+        free(full_path);
+        if (fd != -1) close(fd);
         throw;
     }
 }
@@ -81,7 +82,7 @@ char *Photohosting::SaveFile(ByteArray *file, char *name)
 char *Photohosting::CreateAlbum(const char *user, const char *archive, const char *title)
 {
     int random_id_len = 16;
-    char *random_id = gen_random_string(random_id_len);
+    char *random_id = _gen_random_string(random_id_len);
 
     char *user_path = make_user_path(path_to_store, user);
 

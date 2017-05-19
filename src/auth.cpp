@@ -211,7 +211,7 @@ bool Auth::Check(const char *_login, const char *_password) const
 
 char *Auth::NewSession(const char *user)
 {
-    char *sid = gen_random_string(SID_LEN);
+    char *sid = _gen_random_string(SID_LEN);
 
     char *path = (char *)malloc(strlen(tokens_path) + sizeof "/" + SID_LEN);
     memcpy(path, tokens_path, strlen(tokens_path) + 1);

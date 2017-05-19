@@ -154,7 +154,7 @@ void hexdump(uint8_t *buf, size_t len) {
     fprintf(stderr, "%s", LOG_COLOUR_NORMAL);
 }
 
-char *gen_random_string(int length) {
+char *_gen_random_string(int length) {
     static char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
     char *result = (char *)malloc(length + 1);
 

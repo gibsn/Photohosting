@@ -191,13 +191,11 @@ void HttpSession::ProcessPhotosUpload()
         }
     } catch (NoSpace &) {
         response = new HttpResponse(http_insufficient_storage, request->minor_version, keep_alive);
-    } catch (SystemEx &) {
-        response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
     } catch (PhotohostingEx &) {
         response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
     }
 
-    if (user) free(user);
+    free(user);
 }
 
 
@@ -293,20 +291,19 @@ void HttpSession::ProcessPostRequest()
 char *HttpSession::CreateWebAlbum(const char *user, const char *page_title)
 {
     char *archive_path = NULL;
-    char *album_path = NULL;
 
     try {
         archive_path = UploadFile(user);
 
         LOG_I("Creating new album for user \'%s\'", user);
-        album_path = photohosting->CreateAlbum(user, archive_path, page_title);
-        if (archive_path) free(archive_path);
+        char *album_path = photohosting->CreateAlbum(user, archive_path, page_title);
+        free(archive_path);
 
         LOG_I("The album for user \'%s\' has been successfully created at %s", user, album_path);
 
         return album_path;
     } catch (PhotohostingEx &) {
-        if (archive_path) free(archive_path);
+        free(archive_path);
         throw;
     }
 }
@@ -320,17 +317,17 @@ char *HttpSession::UploadFile(const char *user)
 
     try {
         // TODO: not quite right (can be more than one file)
-        file = GetFileFromRequest(&name);
-        if (!file || !name) throw HttpBadFile(user);
+        file = GetFileFromRequest();
+        if (!file) throw HttpBadFile(user);
 
-        LOG_I("Got file \'%s\' from user %s (%d bytes)", name, user, file->size);
-        saved_file_path = photohosting->SaveFile(file, name);
+        LOG_I("Got file from user %s (%d bytes)", user, file->size);
+        saved_file_path = photohosting->SaveTmpFile(file);
 
         return saved_file_path;
     } catch (PhotohostingEx &ex) {
         LOG_E("%s\n", ex.GetErrMsg());
 
-        if (name) free(name);
+        free(name);
         if (file) delete file;
 
         throw;
@@ -338,7 +335,7 @@ char *HttpSession::UploadFile(const char *user)
 }
 
 
-ByteArray *HttpSession::GetFileFromRequest(char **name) const
+ByteArray *HttpSession::GetFileFromRequest() const
 {
     char *boundary = request->GetMultipartBondary();
     if (!boundary) return NULL;
@@ -348,10 +345,6 @@ ByteArray *HttpSession::GetFileFromRequest(char **name) const
 
     ByteArray *body = parser.GetBody();
     char *_name = parser.GetFilename();
-
-    if (_name && strlen(_name) > 0) {
-        *name = strdup(_name);
-    }
 
     free(boundary);
 

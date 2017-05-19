@@ -24,7 +24,7 @@ public:
 
     const char *GetPathToTmpFiles() const { return path_to_tmp_files; }
 
-    char *SaveFile(ByteArray *file, char *name);
+    char *SaveTmpFile(ByteArray *file);
 
     char *CreateAlbum(const char *user, const char *archive, const char *title);
 
