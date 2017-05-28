@@ -9,6 +9,7 @@
     HTTP_RESPONSE_ENTRY(201, http_created,              "201 CREATED",               NULL)                                               \
     HTTP_RESPONSE_ENTRY(204, http_no_content,           "204 NO CONTENT",            NULL)                                               \
     HTTP_RESPONSE_ENTRY(303, http_see_other,            "303 SEE OTHER",             NULL)                                               \
+    HTTP_RESPONSE_ENTRY(304, http_not_modified,         "304 NOT MODIFIED",          NULL)                                               \
     HTTP_RESPONSE_ENTRY(308, http_permanent_redirect,   "308 PERMANENT REDIRECT",    NULL)                                               \
     HTTP_RESPONSE_ENTRY(400, http_bad_request,          "400 BAD REQUEST",           "Bad request")                                      \
     HTTP_RESPONSE_ENTRY(401, http_unauthorized,         "401 UNAUTHORIZED",          "You are not allowed to do this, please authorise") \

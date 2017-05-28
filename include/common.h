@@ -27,7 +27,6 @@ void hexdump(uint8_t *, size_t);
 ByteArray *read_file(const char *);
 bool file_exists(const char *);
 
-//this will come from WebAlbumCreator
 char *_gen_random_string(int length);
 
 int mkdir_p(const char *, mode_t);

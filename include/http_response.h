@@ -1,6 +1,8 @@
 #ifndef HTTP_RESPONSE_H_SENTRY
 #define HTTP_RESPONSE_H_SENTRY
 
+#include <time.h>
+
 #include "common.h"
 #include "http_status_code.h"
 
@@ -22,19 +24,23 @@ struct HttpResponse {
 
     void AddStatusLine();
 
-    void AddHeader(const char *, const char *);
+    void AddHeader(const char *key, const char *value);
 
     //General headers
     void AddDateHeader();
-    void AddServerHeader();
-    void AddConnectionHeader(bool);
+    void AddConnectionHeader(bool keep_alive);
+    // void AddCacheControlHeader();
 
     //Response headers
+    void AddServerHeader();
     void AddLocationHeader(const char *loc);
-    void SetCookie(const char *key, const char *value);
+    // void AddETagHeader();
+    void AddCookieHeader(const char *key, const char *value);
 
     //Entity headers
     void AddContentLengthHeader();
+    // void AddContentTypeHeader();
+    void AddLastModifiedHeader(time_t time);
 
     void CloseHeaders();
 

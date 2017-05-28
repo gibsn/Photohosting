@@ -1,7 +1,6 @@
 #include "http_response.h"
 
 #include <assert.h>
-#include "common.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -156,13 +155,21 @@ void HttpResponse::AddContentLengthHeader()
 }
 
 
+void HttpResponse::AddLastModifiedHeader(time_t time)
+{
+    char timebuf[32];
+    strftime(timebuf, sizeof(timebuf), "%a, %d %b %Y %H:%M:%S GMT", gmtime(&time));
+    AddHeader("Last-Modified", timebuf);
+}
+
+
 void HttpResponse::AddLocationHeader(const char *loc)
 {
     AddHeader("Location", loc);
 }
 
 
-void HttpResponse::SetCookie(const char *key, const char *value)
+void HttpResponse::AddCookieHeader(const char *key, const char *value)
 {
     int header_value_len = strlen(key) + sizeof "=" + strlen(value);
     char *header_value = (char *)malloc(header_value_len);

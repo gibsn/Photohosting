@@ -28,6 +28,7 @@ public:
 
 class NoSpace: public SystemEx {};
 class SaveFileEx: public SystemEx {};
+class StatEx: public SystemEx {};
 class UnknownWriteError: public SystemEx {};
 class UnknownReadError: public SystemEx {};
 

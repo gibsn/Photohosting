@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "picohttpparser.h"
@@ -127,15 +129,39 @@ fin:
 
 void HttpSession::ProcessStatic(const char *path)
 {
-    ByteArray *file = http_server->GetFileByLocation(path);
-
-    if (!file) {
+    struct stat _stat;
+    if (-1 == http_server->GetFileStat(path, &_stat)) {
         response = new HttpResponse(http_not_found, request->minor_version, keep_alive);
         return;
     }
 
+    if (request->if_modified_since) {
+        struct tm if_modified_since_tm;
+
+        if (!strptime(
+                request->if_modified_since,
+                "%a, %d %b %Y %H:%M:%S GMT",
+                &if_modified_since_tm
+        )){
+            response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
+            return;
+        }
+
+        if (difftime(_stat.st_mtime, timegm(&if_modified_since_tm)) <= 0) {
+            response = new HttpResponse(http_not_modified, request->minor_version, keep_alive);
+            response->AddLastModifiedHeader(_stat.st_mtime);
+            return;
+        }
+    }
+
+    ByteArray *file = http_server->GetFileByPath(path);
+    if (!file) {
+        response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
+        return;
+    }
 
     response = new HttpResponse(http_ok, request->minor_version, keep_alive);
+    response->AddLastModifiedHeader(_stat.st_mtime);
     response->SetBody(file);
 
     delete file;
@@ -219,7 +245,7 @@ void HttpSession::ProcessLogin()
         LOG_I("User %s has authorised from %s", user, s_addr);
 
         response = new HttpResponse(http_ok, request->minor_version, keep_alive);
-        response->SetCookie("sid", new_sid);
+        response->AddCookieHeader("sid", new_sid);
 
         free(new_sid);
     } catch (NewSessionEx &) {
@@ -251,7 +277,7 @@ void HttpSession::ProcessLogout()
         LOG_I("User %s has signed out from %s", user, s_addr);
 
         response = new HttpResponse(http_ok, request->minor_version, keep_alive);
-        response->SetCookie("sid", "");
+        response->AddCookieHeader("sid", "");
     } catch (SystemEx &) {
         if (user) {
             LOG_E("Could not log out user %s", user);
@@ -434,6 +460,8 @@ void HttpSession::ProcessHeaders()
             request->body_len = strtol(headers[i].value, NULL, 10);
         } else if (CMP_HEADER("Cookie")) {
             request->ParseCookie(headers[i].value, headers[i].value_len);
+        } else if (CMP_HEADER("If-Modified-Since")) {
+            request->if_modified_since = strndup(headers[i].value, headers[i].value_len);
         }
     }
 }

@@ -23,6 +23,8 @@ struct HttpRequest {
 
     char *sid;
 
+    char *if_modified_since;
+
     char *body;
     int body_len;
 

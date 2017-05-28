@@ -60,7 +60,7 @@ TcpSession *HttpServer::CreateNewSession()
 
 
 // TODO: should differentiate situations when file doesnt exist and is forbidden
-ByteArray *HttpServer::GetFileByLocation(const char *path)
+ByteArray *HttpServer::GetFileByPath(const char *path)
 {
     char *file_path = AddPathToStaticPrefix(path);
 
@@ -68,6 +68,28 @@ ByteArray *HttpServer::GetFileByLocation(const char *path)
     free(file_path);
 
     return file;
+}
+
+
+// GetFileStat returns -1 if the file has not been found and 0 in case of success
+int HttpServer::GetFileStat(const char *path, struct stat *_stat) const
+{
+    char *full_path = AddPathToStaticPrefix(path);
+
+    if (-1 == stat(full_path, _stat)) {
+        free(full_path);
+
+        if (errno == ENOENT) {
+            return -1;
+        }
+
+        LOG_E("Could not stat file: %s", strerror(errno));
+        throw StatEx();
+    }
+
+    free(full_path);
+
+    return 0;
 }
 
 

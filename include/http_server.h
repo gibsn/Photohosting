@@ -4,6 +4,8 @@
 #include "tcp_server.h"
 
 
+struct stat;
+
 struct Config;
 class Photohosting;
 class TcpSession;
@@ -25,7 +27,9 @@ public:
     HttpServer(const Config &cfg, Photohosting *photohosting);
     virtual ~HttpServer();
 
-    ByteArray *GetFileByLocation(const char *);
+    ByteArray *GetFileByPath(const char *path);
+    int GetFileStat(const char *path, struct stat *_stat) const;
+
     Photohosting *GetPhotohosting() { return photohosting; }
 };
 

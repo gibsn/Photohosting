@@ -16,6 +16,7 @@ HttpRequest::HttpRequest()
     headers_len(0),
     n_headers(100),
     sid(NULL),
+    if_modified_since(NULL),
     body(NULL),
     body_len(0)
 {
@@ -24,8 +25,9 @@ HttpRequest::HttpRequest()
 
 HttpRequest::~HttpRequest()
 {
-    if (body) free(body);
-    if (sid) free(sid);
+    free(sid);
+    free(if_modified_since);
+    free(body);
 }
 
 
