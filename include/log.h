@@ -41,12 +41,12 @@ void set_log_level(const char *log_level);
 #define LOG_ANY(LEVEL, COLOUR, LEVEL_STR, STR, ...) do {           \
     if (LEVEL > log_level) break;                                  \
                                                                    \
-    fprintf(stdout, LOG_COLOUR_##COLOUR);                          \
+    fprintf(stderr, LOG_COLOUR_##COLOUR);                          \
                                                                    \
     time_t t = time(NULL);                                         \
     struct tm *tm = localtime(&t);                                 \
     if (!tm) break;                                                \
-    fprintf(stdout, "%02d.%02d.%04d %02d:%02d:%02d ",              \
+    fprintf(stderr, "%02d.%02d.%04d %02d:%02d:%02d ",              \
         tm->tm_mday,                                               \
         tm->tm_mon + 1,                                            \
         tm->tm_year + 1900,                                        \
@@ -55,8 +55,8 @@ void set_log_level(const char *log_level);
         tm->tm_sec                                                 \
     );                                                             \
                                                                    \
-    fprintf(stdout, "[%d]", my_pid);                               \
-    fprintf(stdout, "[" LEVEL_STR "] " LOG_COLOUR_NORMAL STR "\n", \
+    fprintf(stderr, "[%d]", my_pid);                               \
+    fprintf(stderr, "[" LEVEL_STR "] " LOG_COLOUR_NORMAL STR "\n", \
         ##__VA_ARGS__);                                            \
 } while(0);
 

@@ -83,8 +83,8 @@ int HttpServer::GetFileStat(const char *path, struct stat *_stat) const
             return -1;
         }
 
-        LOG_E("Could not stat file: %s", strerror(errno));
-        throw StatEx();
+        LOG_E("Could not stat file");
+        throw StatEx(strerror(errno));
     }
 
     free(full_path);

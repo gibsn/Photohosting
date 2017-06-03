@@ -237,9 +237,9 @@ fin:
     if (path) free(path);
 
     if (err) {
-        LOG_E("Could not save new session to disk: %s", strerror(errno));
+        LOG_E("Could not save new session to disk");
         if (sid) free(sid);
-        throw NewSessionEx();
+        throw NewSessionEx(strerror(errno));
     }
 
     return sid;
@@ -254,10 +254,10 @@ void Auth::DeleteSession(const char *sid)
     strcat(path, sid);
 
     if (remove(path)) {
-        LOG_E("Could not delete session %s: %s", sid, strerror(errno));
+        LOG_E("Could not delete session %s", sid);
         if (path) free(path);
 
-        throw DeleteSessionEx();
+        throw DeleteSessionEx(strerror(errno));
     }
 
     if (path) free(path);
@@ -297,8 +297,8 @@ fin:
     if (path) free(path);
 
     if (err) {
-        LOG_E("Could not read user's session token from disk: %s", strerror(errno));
-        throw GetUserBySessionEx();
+        LOG_E("Could not read user's session token from disk");
+        throw GetUserBySessionEx(strerror(errno));
     }
 
     return ret;

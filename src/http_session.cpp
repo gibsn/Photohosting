@@ -51,7 +51,7 @@ HttpSession::~HttpSession()
 
 void HttpSession::Close()
 {
-    LOG_I("Closing Http-session");
+    LOG_I("Closing HTTP-session");
     active = false;
 }
 
@@ -192,8 +192,8 @@ void HttpSession::ProcessPhotosUpload()
 
     try {
         user = photohosting->GetUserBySession(request->sid);
-    } catch (GetUserBySessionEx &) {
-        LOG_E("Could not check if client is authorised");
+    } catch (AuthEx &ex) {
+        LOG_E("%s", ex.GetErrMsg());
         response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
         return;
     }
@@ -215,9 +215,11 @@ void HttpSession::ProcessPhotosUpload()
             response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
             response->SetBody("Bad data");
         }
-    } catch (NoSpace &) {
+    } catch (NoSpace &ex) {
+        LOG_E("%s", ex.GetErrMsg());
         response = new HttpResponse(http_insufficient_storage, request->minor_version, keep_alive);
-    } catch (PhotohostingEx &) {
+    } catch (Exception &ex) {
+        LOG_E("%s", ex.GetErrMsg());
         response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
     }
 
@@ -248,7 +250,8 @@ void HttpSession::ProcessLogin()
         response->AddCookieHeader("sid", new_sid);
 
         free(new_sid);
-    } catch (NewSessionEx &) {
+    } catch (AuthEx &ex) {
+        LOG_E("%s", ex.GetErrMsg());
         response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
         goto fin;
     }
@@ -278,11 +281,11 @@ void HttpSession::ProcessLogout()
 
         response = new HttpResponse(http_ok, request->minor_version, keep_alive);
         response->AddCookieHeader("sid", "");
-    } catch (SystemEx &) {
+    } catch (AuthEx &ex) {
         if (user) {
-            LOG_E("Could not log out user %s", user);
+            LOG_E("Could not log out user %s (%s)", user, ex.GetErrMsg());
         } else {
-            LOG_E("Could not log out client from %s", s_addr);
+            LOG_E("Could not log out client from %s (%s)", s_addr, ex.GetErrMsg());
         }
 
         response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);

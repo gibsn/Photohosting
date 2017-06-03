@@ -12,6 +12,7 @@ extern "C" {
 
 #include "cfg.h"
 #include "exceptions.h"
+#include "log.h"
 #include "photohosting.h"
 
 
@@ -178,7 +179,8 @@ void Cgi::ProcessUploadPhotos()
             Respond("You are not signed in");
             goto fin;
         }
-    } catch (GetUserBySessionEx &) {
+    } catch (AuthEx &ex) {
+        LOG_E("%s", ex.GetErrMsg());
         SetStatus(http_internal_error);
         goto fin;
     }
@@ -213,12 +215,11 @@ void Cgi::ProcessUploadPhotos()
             SetStatus(http_bad_request);
             Respond("Bad data");
         }
-        //TODO now these 2 exs are not being thrown
-    } catch (NoSpace &) {
+    } catch (NoSpace &ex) {
+        LOG_E("%s", ex.GetErrMsg());
         SetStatus(http_insufficient_storage);
-    } catch (SystemEx &) {
-        SetStatus(http_internal_error);
-    } catch (PhotohostingEx &) {
+    } catch (PhotohostingEx &ex) {
+        LOG_E("%s", ex.GetErrMsg());
         SetStatus(http_internal_error);
     }
 
@@ -259,7 +260,8 @@ void Cgi::ProcessLogin()
         Respond("You have been successfully authorized");
 
         free(new_sid);
-    } catch (NewSessionEx &) {
+    } catch (AuthEx &ex) {
+        LOG_E("%s", ex.GetErrMsg());
         SetStatus(http_internal_error);
     }
 
@@ -298,7 +300,8 @@ void Cgi::ProcessLogout()
         SetCookie("sid", "");
         CloseHeaders();
         Respond("You have successfully logged out");
-    } catch (PhotohostingEx &) {
+    } catch (AuthEx &ex) {
+        LOG_E("%s", ex.GetErrMsg());
         SetStatus(http_internal_error);
     }
 

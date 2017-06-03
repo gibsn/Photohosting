@@ -33,6 +33,7 @@ void Photohosting::_CreateAlbum(const WebAlbumParams &cfg)
 {
     try {
         CreateWebAlbum(cfg);
+// TODO: watch for enospace
     } catch (Wac::WebAlbumCreatorEx &ex) {
         LOG_E("WebAlbumCreator: %s", ex.GetErrMsg());
 
@@ -57,21 +58,22 @@ char *Photohosting::SaveTmpFile(ByteArray *file)
     int fd = mkstemp(full_path);
     try {
         if (fd == -1) {
-            LOG_E("Could not save tmp file %s: %s", full_path, strerror(errno));
-            throw SaveFileEx();
+            LOG_E("Could not save tmp file %s", full_path);
+            throw SaveFileEx(strerror(errno));
         }
 
         int n = write(fd, file->data, file->size);
         if (file->size != n) {
-            LOG_E("Could not save tmp file %s: %s", full_path, strerror(errno));
+            LOG_E("Could not save tmp file %s", full_path);
             if (errno == ENOSPC) throw NoSpace();
-            throw SaveFileEx();
+            throw SaveFileEx(strerror(errno));
         }
 
         close(fd);
         return full_path;
     }
-    catch (PhotohostingEx &) {
+    catch (SystemEx &ex) {
+        LOG_E("%s", ex.GetErrMsg());
         free(full_path);
         if (fd != -1) close(fd);
         throw;
@@ -99,21 +101,21 @@ char *Photohosting::CreateAlbum(const char *user, const char *archive, const cha
     free(random_id);
     free(user_path);
 
-    bool err = false;
     try {
         _CreateAlbum(cfg);
+
+        if (remove(archive)) LOG_E("Could not delete %s: %s", archive, strerror(errno));
+        free_album_params(cfg);
+
+        return path;
     } catch (PhotohostingEx &) {
         LOG_E("Could not create album %s for user %s", title, user);
         free(path);
-        err = true;
+
+        if (remove(archive)) LOG_E("Could not delete %s: %s", archive, strerror(errno));
+        free_album_params(cfg);
+        throw;
     }
-
-    if (remove(archive)) LOG_E("Could not delete %s: %s", archive, strerror(errno));
-    free_album_params(cfg);
-
-    if (err) throw PhotohostingEx();
-
-    return path;
 }
 
 

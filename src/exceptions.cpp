@@ -4,10 +4,15 @@
 #include "exceptions.h"
 
 
+#define MSG "Got a bad file from user "
 HttpBadFile::HttpBadFile(const char *user)
 {
-    static const char *msg = "Got a bad file from user ";
-    text = (char *)malloc(sizeof msg + strlen(user));
-    strcpy(text, msg);
-    strcat(text, user);
+    int len = sizeof MSG + strlen(user);
+    char *_err_msg = (char *)malloc(len);
+
+    snprintf(_err_msg, len, MSG "%s", user);
+
+    SetErrMsg(_err_msg);
+    free(_err_msg);
 }
+#undef MSG
