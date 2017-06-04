@@ -24,26 +24,35 @@ Photohosting::Photohosting(Config &cfg, AuthDriver *_auth)
 
 Photohosting::~Photohosting()
 {
-    if (path_to_store) free(path_to_store);
-    if (path_to_tmp_files) free(path_to_tmp_files);
-    if (relative_path_to_css) free(relative_path_to_css);
+    free(path_to_store);
+    free(path_to_tmp_files);
+    free(relative_path_to_css);
 }
 
 void Photohosting::_CreateAlbum(const WebAlbumParams &cfg)
 {
     try {
-        CreateWebAlbum(cfg);
-// TODO: watch for enospace
-    } catch (Wac::WebAlbumCreatorEx &ex) {
-        LOG_E("WebAlbumCreator: %s", ex.GetErrMsg());
+        try {
+            CreateWebAlbum(cfg);
+        } catch (Wac::Exception &ex) {
+            LOG_E("WebAlbumCreator: %s", ex.GetErrMsg());
 
-        if (clean_paths(cfg)) {
-            LOG_E("Could not clean paths after failing to create album");
-        } else {
-            LOG_I("Cleaned the paths after failing to create album");
+            if (clean_paths(cfg)) {
+                LOG_E("Could not clean paths after failing to create album");
+            } else {
+                LOG_I("Cleaned the paths after failing to create album");
+            }
+
+            throw;
         }
-
-        throw PhotohostingEx();
+    } catch (Wac::NoSpace &ex) {
+        throw NoSpace("Failed to create album due to the lack of space");
+    } catch (Wac::LibArchiveEx &ex) {
+        throw BadArchive(ex.GetErrMsg());
+    } catch (Wac::CorruptedImage &ex) {
+        throw BadImage(ex.GetErrMsg());
+    } catch (Wac::Exception &ex) {
+        throw PhotohostingEx(ex.GetErrMsg());
     }
 }
 
@@ -65,7 +74,7 @@ char *Photohosting::SaveTmpFile(ByteArray *file)
         int n = write(fd, file->data, file->size);
         if (file->size != n) {
             LOG_E("Could not save tmp file %s", full_path);
-            if (errno == ENOSPC) throw NoSpace();
+            if (errno == ENOSPC) throw NoSpace(strerror(errno));
             throw SaveFileEx(strerror(errno));
         }
 
@@ -73,9 +82,10 @@ char *Photohosting::SaveTmpFile(ByteArray *file)
         return full_path;
     }
     catch (SystemEx &ex) {
-        LOG_E("%s", ex.GetErrMsg());
         free(full_path);
         if (fd != -1) close(fd);
+
+        LOG_E("%s", ex.GetErrMsg());
         throw;
     }
 }
@@ -108,11 +118,11 @@ char *Photohosting::CreateAlbum(const char *user, const char *archive, const cha
         free_album_params(cfg);
 
         return path;
-    } catch (PhotohostingEx &) {
+    } catch (Exception &) {
         LOG_E("Could not create album %s for user %s", title, user);
-        free(path);
-
         if (remove(archive)) LOG_E("Could not delete %s: %s", archive, strerror(errno));
+
+        free(path);
         free_album_params(cfg);
         throw;
     }

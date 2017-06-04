@@ -216,10 +216,14 @@ void HttpSession::ProcessPhotosUpload()
             response->SetBody("Bad data");
         }
     } catch (NoSpace &ex) {
-        LOG_E("%s", ex.GetErrMsg());
+        LOG_E("Responding 507 to %s", user);
         response = new HttpResponse(http_insufficient_storage, request->minor_version, keep_alive);
+    } catch (UserEx &ex) {
+        LOG_I("Responding 404 to %s", user);
+        response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
+        response->SetBody(ex.GetErrMsg());
     } catch (Exception &ex) {
-        LOG_E("%s", ex.GetErrMsg());
+        LOG_E("Responding 500 to %s", user);
         response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
     }
 
@@ -331,7 +335,7 @@ char *HttpSession::CreateWebAlbum(const char *user, const char *page_title)
         LOG_I("The album for user \'%s\' has been successfully created at %s", user, album_path);
 
         return album_path;
-    } catch (PhotohostingEx &) {
+    } catch (Exception &) {
         free(archive_path);
         throw;
     }

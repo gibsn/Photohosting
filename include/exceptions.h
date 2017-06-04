@@ -25,7 +25,11 @@ public:
     SystemEx(const char *t): Exception(t) {};
 };
 
-class NoSpace: public SystemEx {};
+class NoSpace: public SystemEx {
+
+public:
+    NoSpace(const char *t): SystemEx(t) {}
+};
 
 class SaveFileEx: public SystemEx {
 
@@ -68,8 +72,23 @@ public:
 };
 
 
-class UserEx : public Exception {};
+class UserEx: public Exception {
 
+public:
+    UserEx(const char *t): Exception(t) {}
+};
+
+class BadArchive: public UserEx {
+
+public:
+    BadArchive(const char *t): UserEx(t) {}
+};
+
+class BadImage: public UserEx {
+
+public:
+    BadImage(const char *t): UserEx(t) {}
+};
 
 class HttpEx: public Exception {};
 
@@ -80,7 +99,11 @@ public:
 };
 
 
-class PhotohostingEx: public Exception {};
+class PhotohostingEx: public Exception {
+
+public:
+    PhotohostingEx(const char *t): Exception(t) {}
+};
 
 
 #endif

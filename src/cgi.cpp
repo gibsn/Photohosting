@@ -218,13 +218,17 @@ void Cgi::ProcessUploadPhotos()
     } catch (NoSpace &ex) {
         LOG_E("%s", ex.GetErrMsg());
         SetStatus(http_insufficient_storage);
+    } catch (UserEx &ex) {
+        LOG_E("%s", ex.GetErrMsg());
+        SetStatus(http_bad_request);
+        Respond(ex.GetErrMsg());
     } catch (PhotohostingEx &ex) {
         LOG_E("%s", ex.GetErrMsg());
         SetStatus(http_internal_error);
     }
 
 fin:
-    if (user) free(user);
+    free(user);
     CGI_free_varlist(cookies);
     CGI_free_varlist(multipart);
 }
