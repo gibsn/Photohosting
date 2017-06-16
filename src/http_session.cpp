@@ -56,6 +56,12 @@ void HttpSession::Close()
 }
 
 
+void HttpSession::InitHttpResponse(http_status_t status)
+{
+    response = new HttpResponse(status, request->minor_version, keep_alive);
+}
+
+
 bool HttpSession::ValidateLocation(char *path)
 {
     bool ret = false;
@@ -100,13 +106,13 @@ bool HttpSession::ProcessRequest()
     LOG_D("Processing HTTP-request");
 
     if (!ValidateLocation(strndup(request->path, request->path_len))) {
-        response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
+        InitHttpResponse(http_bad_request);
     } else if (METHOD_IS("GET")) {
         ProcessGetRequest();
     } else if (METHOD_IS("POST")) {
         ProcessPostRequest();
     } else {
-        response = new HttpResponse(http_not_found, request->minor_version, keep_alive);
+        InitHttpResponse(http_not_found);
     }
 
     Respond();
@@ -131,7 +137,7 @@ void HttpSession::ProcessStatic(const char *path)
 {
     struct stat _stat;
     if (-1 == http_server->GetFileStat(path, &_stat)) {
-        response = new HttpResponse(http_not_found, request->minor_version, keep_alive);
+        InitHttpResponse(http_not_found);
         return;
     }
 
@@ -143,12 +149,12 @@ void HttpSession::ProcessStatic(const char *path)
                 "%a, %d %b %Y %H:%M:%S GMT",
                 &if_modified_since_tm
         )){
-            response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
+            InitHttpResponse(http_bad_request);
             return;
         }
 
         if (difftime(_stat.st_mtime, timegm(&if_modified_since_tm)) <= 0) {
-            response = new HttpResponse(http_not_modified, request->minor_version, keep_alive);
+            InitHttpResponse(http_not_modified);
             response->AddLastModifiedHeader(_stat.st_mtime);
             return;
         }
@@ -156,11 +162,11 @@ void HttpSession::ProcessStatic(const char *path)
 
     ByteArray *file = http_server->GetFileByPath(path);
     if (!file) {
-        response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
+        InitHttpResponse(http_internal_error);
         return;
     }
 
-    response = new HttpResponse(http_ok, request->minor_version, keep_alive);
+    InitHttpResponse(http_ok);
     response->AddLastModifiedHeader(_stat.st_mtime);
     response->SetBody(file);
 
@@ -173,12 +179,12 @@ void HttpSession::ProcessGetRequest()
     char *path = strndup(request->path, request->path_len);
 
     if (LOCATION_IS("/")) {
-        response = new HttpResponse(http_see_other, request->minor_version, keep_alive);
+        InitHttpResponse(http_see_other);
         response->AddLocationHeader("/static/index.html");
     } else if (LOCATION_STARTS_WITH("/static/")) {
         ProcessStatic(path);
     } else {
-        response = new HttpResponse(http_not_found, request->minor_version, keep_alive);
+        InitHttpResponse(http_not_found);
     }
 
     free(path);
@@ -194,13 +200,13 @@ void HttpSession::ProcessPhotosUpload()
         user = photohosting->GetUserBySession(request->sid);
     } catch (AuthEx &ex) {
         LOG_E("%s", ex.GetErrMsg());
-        response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
+        InitHttpResponse(http_internal_error);
         return;
     }
 
     if (!user) {
         LOG_I("Client from %s is not authorised, responding 403", s_addr);
-        response = new HttpResponse(http_forbidden, request->minor_version, keep_alive);
+        InitHttpResponse(http_forbidden);
         return;
     }
 
@@ -208,23 +214,23 @@ void HttpSession::ProcessPhotosUpload()
         // TODO: get page title from somewhere
         char *album_path = CreateWebAlbum(user, "test_album");
         if (album_path) {
-            response = new HttpResponse(http_see_other, request->minor_version, keep_alive);
+            InitHttpResponse(http_see_other);
             response->AddLocationHeader(album_path);
             free(album_path);
         } else {
-            response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
+            InitHttpResponse(http_bad_request);
             response->SetBody("Bad data");
         }
     } catch (NoSpace &ex) {
         LOG_E("Responding 507 to %s", user);
-        response = new HttpResponse(http_insufficient_storage, request->minor_version, keep_alive);
+        InitHttpResponse(http_insufficient_storage);
     } catch (UserEx &ex) {
         LOG_I("Responding 404 to %s", user);
-        response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
+        InitHttpResponse(http_bad_request);
         response->SetBody(ex.GetErrMsg());
     } catch (Exception &ex) {
         LOG_E("Responding 500 to %s", user);
-        response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
+        InitHttpResponse(http_internal_error);
     }
 
     free(user);
@@ -236,27 +242,27 @@ void HttpSession::ProcessLogin()
     char *user = Auth::ParseLoginFromReq(request->body, request->body_len);
     char *password = Auth::ParsePasswordFromReq(request->body, request->body_len);
     if (!user || !password) {
-        response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
+        InitHttpResponse(http_bad_request);
         goto fin;
     }
 
     try {
         char *new_sid = photohosting->Authorise(user, password);
         if (!new_sid) {
-            response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
+            InitHttpResponse(http_bad_request);
             LOG_I("Client from %s failed to authorise as user %s", s_addr, user);
             goto fin;
         }
 
         LOG_I("User %s has authorised from %s", user, s_addr);
 
-        response = new HttpResponse(http_ok, request->minor_version, keep_alive);
+        InitHttpResponse(http_ok);
         response->AddCookieHeader("sid", new_sid);
 
         free(new_sid);
     } catch (AuthEx &ex) {
         LOG_E("%s", ex.GetErrMsg());
-        response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
+        InitHttpResponse(http_internal_error);
         goto fin;
     }
 
@@ -275,7 +281,7 @@ void HttpSession::ProcessLogout()
 
         if (!user) {
             LOG_W("Unauthorised user from %s attempted to sign out", s_addr);
-            response = new HttpResponse(http_bad_request, request->minor_version, keep_alive);
+            InitHttpResponse(http_bad_request);
             response->SetBody("You are not signed in");
             goto fin;
         }
@@ -283,7 +289,7 @@ void HttpSession::ProcessLogout()
         photohosting->Logout(request->sid);
         LOG_I("User %s has signed out from %s", user, s_addr);
 
-        response = new HttpResponse(http_ok, request->minor_version, keep_alive);
+        InitHttpResponse(http_ok);
         response->AddCookieHeader("sid", "");
     } catch (AuthEx &ex) {
         if (user) {
@@ -292,7 +298,7 @@ void HttpSession::ProcessLogout()
             LOG_E("Could not log out client from %s (%s)", s_addr, ex.GetErrMsg());
         }
 
-        response = new HttpResponse(http_internal_error, request->minor_version, keep_alive);
+        InitHttpResponse(http_internal_error);
     }
 
 fin:
@@ -311,7 +317,7 @@ void HttpSession::ProcessPostRequest()
     } else if (LOCATION_IS("/logout")) {
         ProcessLogout();
     } else {
-        response = new HttpResponse(http_not_found, request->minor_version, keep_alive);
+        InitHttpResponse(http_not_found);
     }
 
     free(path);

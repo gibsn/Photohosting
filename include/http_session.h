@@ -2,6 +2,7 @@
 #define HTTP_SESSION_H_SENTRY
 
 #include "app_layer_driver.h"
+#include "http_status_code.h"
 
 
 class Photohosting;
@@ -43,6 +44,7 @@ class HttpSession: public AppLayerDriver {
     void ProcessGetRequest();
     void ProcessPostRequest();
 
+    void InitHttpResponse(http_status_t status);
     void Respond();
 
     void ProcessLogin();
