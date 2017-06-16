@@ -12,15 +12,14 @@
 #include "log.h"
 
 
-char *make_user_path(const char *path_to_static, const char *user)
+char *make_user_path(const char *path_to_store, const char *user)
 {
-    int user_path_len = strlen(path_to_static) + sizeof "/" - 1;
+    int user_path_len = strlen(path_to_store) + sizeof "/users/" - 1;
     user_path_len += strlen(user) + sizeof "/";
     char *user_path = (char *)malloc(user_path_len);
 
-    strcpy(user_path, path_to_static);
-    strcat(user_path, "/");
-
+    strcpy(user_path, path_to_store);
+    strcat(user_path, "/users/");
     strcat(user_path, user);
     strcat(user_path, "/");
 
@@ -94,15 +93,15 @@ char *make_path_to_css(const char *path_to_css)
 
 static char *make_r_path_to_srcs(const char *user, const char *random_id)
 {
-    int r_path_to_srcs_len = sizeof "/static/" - 1 + strlen(user);
+    int r_path_to_srcs_len = sizeof "/static/" - 1 + sizeof "users/" - 1 + strlen(user);
     r_path_to_srcs_len +=  sizeof "/srcs/" - 1 + strlen(random_id) + sizeof "/";
     char *r_path_to_srcs = (char *)malloc(r_path_to_srcs_len);
 
     strcpy(r_path_to_srcs, "/static/");
 
+    strcat(r_path_to_srcs, "users/");
     strcat(r_path_to_srcs, user);
     strcat(r_path_to_srcs, "/srcs/");
-
     strcat(r_path_to_srcs, random_id);
     strcat(r_path_to_srcs, "/");
 
@@ -112,16 +111,16 @@ static char *make_r_path_to_srcs(const char *user, const char *random_id)
 
 static char *make_r_path_to_thmbs(const char *user, const char *random_id)
 {
-    int r_path_to_thmbs_len = sizeof "/static/" - 1 + strlen(user);
+    int r_path_to_thmbs_len = sizeof "/static/" - 1 + sizeof "users/" - 1 + strlen(user);
     r_path_to_thmbs_len +=  sizeof "/thmbs/" - 1 + strlen(random_id) + sizeof "/";
 
     char *r_path_to_thmbs = (char *)malloc(r_path_to_thmbs_len);
 
     strcpy(r_path_to_thmbs, "/static/");
 
+    strcat(r_path_to_thmbs, "users/");
     strcat(r_path_to_thmbs, user);
     strcat(r_path_to_thmbs, "/thmbs/");
-
     strcat(r_path_to_thmbs, random_id);
     strcat(r_path_to_thmbs, "/");
 
@@ -131,16 +130,16 @@ static char *make_r_path_to_thmbs(const char *user, const char *random_id)
 
 char *make_r_path_to_webpage(const char *user, const char *random_id)
 {
-    int r_path_to_webpage_len = sizeof "/static/" - 1 + strlen(user);
+    int r_path_to_webpage_len = sizeof "/static/" - 1 + sizeof "users/" - 1 + strlen(user);
     r_path_to_webpage_len +=  sizeof "/" - 1 + strlen(random_id) + sizeof ".html";
 
     char *r_path_to_webpage = (char *)malloc(r_path_to_webpage_len);
 
     strcpy(r_path_to_webpage, "/static/");
 
+    strcat(r_path_to_webpage, "users/");
     strcat(r_path_to_webpage, user);
     strcat(r_path_to_webpage, "/");
-
     strcat(r_path_to_webpage, random_id);
     strcat(r_path_to_webpage, ".html");
 
@@ -196,15 +195,6 @@ bool create_user_paths(
         const char *srcs_path,
         const char *thmbs_path)
 {
-    if (!file_exists(user_path)) {
-        if (mkdir(user_path, 0777)) {
-            LOG_E("Could not create directory %s: %s", user_path, strerror(errno));
-            return false;
-        }
-
-        LOG_I("Created directory %s", user_path);
-    }
-
     if (mkdir_p(srcs_path, 0777)) {
         LOG_E("Could not create directory %s: %s", srcs_path, strerror(errno));
         return false;
