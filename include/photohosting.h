@@ -22,6 +22,8 @@ public:
     Photohosting(Config &cfg, AuthDriver *auth);
     ~Photohosting();
 
+    bool Init(const Config &cfg);
+
     const char *GetPathToTmpFiles() const { return path_to_tmp_files; }
 
     char *SaveTmpFile(ByteArray *file);

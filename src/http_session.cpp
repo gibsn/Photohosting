@@ -41,17 +41,17 @@ HttpSession::~HttpSession()
 {
     if (active) this->Close();
 
-    if (read_buf) delete read_buf;
-    if (s_addr) free(s_addr);
+    delete read_buf;
+    free(s_addr);
 
-    if (request) delete request;
-    if (response) delete response;
+    delete request;
+    delete response;
 }
 
 
 void HttpSession::Close()
 {
-    LOG_I("Closing HTTP-session");
+    LOG_I("http: closing session");
     active = false;
 }
 
@@ -103,7 +103,6 @@ bool HttpSession::ProcessRequest()
         break;
     }
     // hexdump((uint8_t *)read_buf->data, read_buf->size);
-    LOG_D("Processing HTTP-request");
 
     if (!ValidateLocation(strndup(request->path, request->path_len))) {
         InitHttpResponse(http_bad_request);
@@ -193,19 +192,18 @@ void HttpSession::ProcessGetRequest()
 
 void HttpSession::ProcessPhotosUpload()
 {
-    LOG_I("Client from %s is trying to upload photos", s_addr);
+    LOG_I("http: client from %s is trying to upload photos", s_addr);
     char *user = NULL;
 
     try {
         user = photohosting->GetUserBySession(request->sid);
     } catch (AuthEx &ex) {
-        LOG_E("%s", ex.GetErrMsg());
         InitHttpResponse(http_internal_error);
         return;
     }
 
     if (!user) {
-        LOG_I("Client from %s is not authorised, responding 403", s_addr);
+        LOG_I("http: client from %s is not authorised, responding 403", s_addr);
         InitHttpResponse(http_forbidden);
         return;
     }
@@ -213,23 +211,20 @@ void HttpSession::ProcessPhotosUpload()
     try {
         // TODO: get page title from somewhere
         char *album_path = CreateWebAlbum(user, "test_album");
-        if (album_path) {
-            InitHttpResponse(http_see_other);
-            response->AddLocationHeader(album_path);
-            free(album_path);
-        } else {
-            InitHttpResponse(http_bad_request);
-            response->SetBody("Bad data");
-        }
+
+        InitHttpResponse(http_see_other);
+        response->AddLocationHeader(album_path);
+
+        free(album_path);
     } catch (NoSpace &ex) {
-        LOG_E("Responding 507 to %s", user);
+        LOG_E("http: responding 507 to %s", user);
         InitHttpResponse(http_insufficient_storage);
     } catch (UserEx &ex) {
-        LOG_I("Responding 404 to %s", user);
+        LOG_I("http: responding 404 to %s", user);
         InitHttpResponse(http_bad_request);
-        response->SetBody(ex.GetErrMsg());
+        response->SetBody("Bad data");
     } catch (Exception &ex) {
-        LOG_E("Responding 500 to %s", user);
+        LOG_E("http: responding 500 to %s", user);
         InitHttpResponse(http_internal_error);
     }
 
@@ -250,25 +245,23 @@ void HttpSession::ProcessLogin()
         char *new_sid = photohosting->Authorise(user, password);
         if (!new_sid) {
             InitHttpResponse(http_bad_request);
-            LOG_I("Client from %s failed to authorise as user %s", s_addr, user);
+            LOG_I("http: client from %s failed to authorise as user %s", s_addr, user);
             goto fin;
         }
 
-        LOG_I("User %s has authorised from %s", user, s_addr);
+        LOG_I("http: user %s has authorised from %s", user, s_addr);
 
         InitHttpResponse(http_ok);
         response->AddCookieHeader("sid", new_sid);
 
         free(new_sid);
     } catch (AuthEx &ex) {
-        LOG_E("%s", ex.GetErrMsg());
         InitHttpResponse(http_internal_error);
-        goto fin;
     }
 
 fin:
-    if (user) free(user);
-    if (password) free(password);
+    free(user);
+    free(password);
 }
 
 
@@ -278,31 +271,29 @@ void HttpSession::ProcessLogout()
 
     try {
         user = photohosting->GetUserBySession(request->sid);
-
         if (!user) {
-            LOG_W("Unauthorised user from %s attempted to sign out", s_addr);
+            LOG_I("http: unauthorised user from %s attempted to sign out", s_addr);
             InitHttpResponse(http_bad_request);
             response->SetBody("You are not signed in");
-            goto fin;
+            return;
         }
 
         photohosting->Logout(request->sid);
-        LOG_I("User %s has signed out from %s", user, s_addr);
+        LOG_I("http: user %s has signed out from %s", user, s_addr);
 
         InitHttpResponse(http_ok);
         response->AddCookieHeader("sid", "");
     } catch (AuthEx &ex) {
         if (user) {
-            LOG_E("Could not log out user %s (%s)", user, ex.GetErrMsg());
+            LOG_E("http: could not log out user %s", user);
         } else {
-            LOG_E("Could not log out client from %s (%s)", s_addr, ex.GetErrMsg());
+            LOG_E("http: could not log out client from %s", s_addr);
         }
 
         InitHttpResponse(http_internal_error);
     }
 
-fin:
-    if (user) free(user);
+    free(user);
 }
 
 
@@ -334,11 +325,12 @@ char *HttpSession::CreateWebAlbum(const char *user, const char *page_title)
     try {
         archive_path = UploadFile(user);
 
-        LOG_I("Creating new album for user \'%s\'", user);
+        LOG_I("http: creating new album for user \'%s\'", user);
         char *album_path = photohosting->CreateAlbum(user, archive_path, page_title);
         free(archive_path);
 
-        LOG_I("The album for user \'%s\' has been successfully created at %s", user, album_path);
+        LOG_I("http: the album for user \'%s\' has been successfully created at %s",
+            user, album_path);
 
         return album_path;
     } catch (Exception &) {
@@ -350,25 +342,17 @@ char *HttpSession::CreateWebAlbum(const char *user, const char *page_title)
 
 char *HttpSession::UploadFile(const char *user)
 {
-    char *name = NULL;
     ByteArray* file = NULL;
-    char *saved_file_path = NULL;
-
     try {
         // TODO: not quite right (can be more than one file)
         file = GetFileFromRequest();
         if (!file) throw HttpBadFile(user);
 
-        LOG_I("Got file from user %s (%d bytes)", user, file->size);
-        saved_file_path = photohosting->SaveTmpFile(file);
+        LOG_I("http: got file from user %s (%d bytes)", user, file->size);
 
-        return saved_file_path;
+        return photohosting->SaveTmpFile(file);
     } catch (PhotohostingEx &ex) {
-        LOG_E("%s\n", ex.GetErrMsg());
-
-        free(name);
-        if (file) delete file;
-
+        delete file;
         throw;
     }
 }
@@ -383,7 +367,6 @@ ByteArray *HttpSession::GetFileFromRequest() const
     parser.Execute(ByteArray(request->body, request->body_len));
 
     ByteArray *body = parser.GetBody();
-    char *_name = parser.GetFilename();
 
     free(boundary);
 
@@ -423,11 +406,11 @@ request_parser_result_t HttpSession::ParseHttpRequest(ByteArray *req)
                                 0);
 
     if (res == -1) {
-        LOG_W("Got an incomplete HTTP-Request")
+        LOG_W("http: got an incomplete request")
         ret = incomplete_request;
         goto fin;
     } else if (res == -2) {
-        LOG_E("Failed to parse HTTP-Request");
+        LOG_E("http: failed to parse request");
         ret = invalid_request;
         goto fin;
     }
@@ -437,7 +420,7 @@ request_parser_result_t HttpSession::ParseHttpRequest(ByteArray *req)
 
     body_bytes_pending = request->body_len - (req->size - res);
     if (body_bytes_pending) {
-        LOG_D("Missing %d body bytes, waiting", body_bytes_pending);
+        LOG_D("http: missing %d body bytes, waiting", body_bytes_pending);
         ret = incomplete_request;
         goto fin;
     }
@@ -461,7 +444,7 @@ void HttpSession::ProcessHeaders()
 {
     struct phr_header *headers = request->headers;
     for (int i = 0; i < request->n_headers; ++i) {
-        LOG_D("%.*s: %.*s",
+        LOG_D("http: %.*s: %.*s",
                 int(headers[i].name_len), headers[i].name,
                 int(headers[i].value_len), headers[i].value);
 

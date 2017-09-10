@@ -13,29 +13,29 @@ int main(int argc, char **argv)
 {
     Config cfg;
 
-    if (!process_cmd_arguments(argc, argv, cfg)) return -1;
+    if (!process_cmd_arguments(argc, argv, cfg)) return EXIT_FAILURE;
 
-    if (!cfg.Init(cfg.path_to_cfg)) return -1;
+    if (!cfg.Init(cfg.path_to_cfg)) return EXIT_FAILURE;
     cfg.Check();
 
     get_pid_for_logger();
     set_log_level(cfg.log_level);
-    LOG_I("Initialised logging");
-    LOG_I("Initialised config");
+    LOG_I("main: initialised logging");
+    LOG_I("main: initialised config");
 
     Auth auth;
-    if (!auth.Init(cfg.path_to_pwd, cfg.path_to_tokens)) return -1;
-    LOG_I("Initialised auth");
+    if (!auth.Init(cfg.path_to_pwd, cfg.path_to_tokens)) return EXIT_FAILURE;
+    LOG_I("main: initialised auth");
 
     Photohosting photohosting(cfg, &auth);
+    if (!photohosting.Init(cfg)) return EXIT_FAILURE;
+    LOG_I("main: initialised photohosting");
 
-    LOG_I("Starting server");
     HttpServer server(cfg, &photohosting);
     server.Init();
+    LOG_I("main: initialised http");
 
-    if (cfg.runas) {
-        if (!change_user(cfg.runas)) exit(-1);
-    }
+    if (cfg.runas && !change_user(cfg.runas)) return EXIT_FAILURE;
 
     server.ListenAndServe();
 

@@ -47,7 +47,7 @@ bool TcpSession::ProcessRequest()
 
 void TcpSession::Close()
 {
-    LOG_I("Closing TCP-session for %s (%d)", s_addr, fd);
+    LOG_I("tcp: closing session for %s (%d)", s_addr, fd);
 
     if (fd) {
         shutdown(fd, SHUT_RDWR);
@@ -63,10 +63,10 @@ TcpSession::~TcpSession()
     if (active) this->Close();
     session_driver->Close();
 
-    if (session_driver) delete session_driver;
+    delete session_driver;
 
-    if (write_buf) free(write_buf);
-    if (s_addr) free(s_addr);
+    free(write_buf);
+    free(s_addr);
 }
 
 
@@ -93,7 +93,8 @@ bool TcpSession::ReadToBuf()
 
     if (n < 0) {
         if (errno != ECONNRESET) {
-            LOG_E("Some error occurred while reading from %s (%d)", s_addr, fd);
+            LOG_E("tcp: some error occurred while reading from %s (%d): %s",
+                    s_addr, fd, strerror(errno));
         }
 
         return false;
@@ -110,7 +111,9 @@ bool TcpSession::Flush()
     int n = write(fd, write_buf + write_buf_offset, write_buf_len - write_buf_offset);
 
     if (n <= 0) {
-        LOG_E("Some error occurred while writing to %s (%d): %s", s_addr, fd, strerror(errno));
+        LOG_E("tcp: some error occurred while writing to %s (%d): %s",
+                s_addr, fd, strerror(errno));
+
         return false;
     }
 

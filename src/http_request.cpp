@@ -56,7 +56,6 @@ char *HttpRequest::GetMultipartBondary() const
 
 fin:
             free(value);
-
             return boundary;
         }
     }

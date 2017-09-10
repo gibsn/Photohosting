@@ -29,7 +29,7 @@ static void print_help()
         "Available options:\n"
 
         " -c [string]: path to config file\n"
-        " -C         : generate config file and exit\n"
+        " -h         : print this message\n"
     );
 }
 
@@ -88,9 +88,9 @@ ByteArray *read_file(const char *path)
     int fd = open(path, O_RDONLY);
     if (fd == -1) {
         if (errno == ENOENT) {
-            LOG_W("Could not read file %s: %s", path, strerror(errno));
+            LOG_W("read_file: ould not read file %s: %s", path, strerror(errno));
         } else {
-            LOG_E("Could not read file %s: %s", path, strerror(errno));
+            LOG_E("read_file: ould not read file %s: %s", path, strerror(errno));
         }
 
         return NULL;
@@ -100,7 +100,7 @@ ByteArray *read_file(const char *path)
     int ret = fstat(fd, &file_stat);
     if (ret) {
         close(fd);
-        LOG_E("%s", strerror(errno));
+        LOG_E("read_file: could not fstat %s: %s", path, strerror(errno));
         return NULL;
     }
 
@@ -108,7 +108,7 @@ ByteArray *read_file(const char *path)
     int n = read(fd, buf, file_stat.st_size);
     close(fd);
     if (n != file_stat.st_size) {
-        LOG_E("Could not read file %s", path);
+        LOG_E("read_file: ould not read file %s", path);
         free(buf);
         return NULL;
     }
@@ -202,7 +202,7 @@ int rm_rf(const char *path)
 {
     DIR *dir = opendir(path);
     if (!dir) {
-        LOG_E("Could not delete %s: %s", path, strerror(errno));
+        LOG_E("rm: could not delete %s: %s", path, strerror(errno));
         return -1;
     }
 
@@ -217,7 +217,7 @@ int rm_rf(const char *path)
         char *new_path = (char *)malloc(512);
         int n = snprintf(new_path, 512, "%s/%s", path, next_file->d_name);
         if (n < 0 || n >= 512) {
-            LOG_E("rm_all_files(): filepath excedeed the size of buf");
+            LOG_E("rm: filepath excedeed the size of buf");
             return -1;
         }
 
@@ -225,7 +225,7 @@ int rm_rf(const char *path)
 
         int err = remove(new_path);
         if (err) {
-            LOG_E("Could not delete %s: %s", new_path, strerror(errno));
+            LOG_E("rm: could not delete %s: %s", new_path, strerror(errno));
             return -1;
         }
 
@@ -251,7 +251,7 @@ bool change_user(const char *runas)
 
 	char *colon = strchr(_runas, ':');
 	if (colon == NULL) {
-        LOG_E("Wrong runas option %s", runas);
+        LOG_E("runas: wrong runas option %s", runas);
         goto fin;
     }
 
@@ -262,18 +262,18 @@ bool change_user(const char *runas)
 
     pwd = getpwnam(username);
 	if (pwd == NULL) {
-		LOG_E("Wrong username %s", username);
+		LOG_E("runas: wrong username %s", username);
         goto fin;
     }
 
     grp = getgrnam(groupname);
 	if (grp == NULL) {
-		LOG_E("Wrong groupname %s", groupname);
+		LOG_E("runas: wrong groupname %s", groupname);
         goto fin;
     }
 
 	if (setgid(grp->gr_gid) || setuid(pwd->pw_uid)) {
-		LOG_E("setgid/setuid failed: %s", strerror(errno));
+		LOG_E("runas: setgid/setuid failed: %s", strerror(errno));
         goto fin;
     }
 
@@ -283,6 +283,7 @@ bool change_user(const char *runas)
 #endif
 
     ret = true;
+    LOG_I("runas: running as %s", runas);
 
 fin:
     if (_runas) free(_runas);

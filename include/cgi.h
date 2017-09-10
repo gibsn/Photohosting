@@ -19,6 +19,10 @@ class Cgi
     void ProcessLogin();
     void ProcessLogout();
 
+    char *GetSidFromCookies();
+    char *GetUserBySid(const char *sid);
+    char *SaveFileFromPost();
+
     // these close headers
     void SetStatus(http_status_t status);
     void SetContentType(const char *type);

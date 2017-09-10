@@ -27,6 +27,8 @@ public:
     HttpServer(const Config &cfg, Photohosting *photohosting);
     virtual ~HttpServer();
 
+    virtual bool Init();
+
     ByteArray *GetFileByPath(const char *path);
     int GetFileStat(const char *path, struct stat *_stat) const;
 

@@ -1,7 +1,7 @@
 -include Makefile.local
 
 CXXFLAGS += -g -Wall
-CXXFLAGS += -Wno-unused-variable -Wno-unused-value -std=c++98 -fpermissive
+CXXFLAGS += -std=c++98 -fpermissive
 
 SRC_DIR = src
 INCLUDE_DIR = include

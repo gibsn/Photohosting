@@ -47,7 +47,7 @@ TcpSession *HttpServer::CreateNewSession()
     TcpSession *tcp_session = TcpServer::CreateNewSession();
     // TODO: here TcpServer returns NULL when EAGAIN happens as well
     if (!tcp_session) {
-        LOG_D("Could not open a new HTTP-session");
+        // LOG_E("http: could not open a new session");
         return NULL;
     }
 
@@ -83,13 +83,21 @@ int HttpServer::GetFileStat(const char *path, struct stat *_stat) const
             return -1;
         }
 
-        LOG_E("Could not stat file");
+        LOG_E("http: could not stat file %s: %s", path, strerror(errno));
         throw StatEx(strerror(errno));
     }
 
     free(full_path);
 
     return 0;
+}
+
+
+bool HttpServer::Init()
+{
+    if (!TcpServer::Init()) return false;
+
+    return true;
 }
 
 

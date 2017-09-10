@@ -3,10 +3,14 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 
 #include "common.h"
 #include "exceptions.h"
 #include "log.h"
+
+
+const int Auth::SidLen = 32;
 
 
 bool AuthFileParser::CheckEof()
@@ -91,7 +95,7 @@ void UsersList::Append(const char *_login, const char *_password)
 {
     UsersListNode *new_node = new UsersListNode(_login, _password);
 
-    if (head == 0) {
+    if (!head) {
         head = new_node;
         last = new_node;
         return;
@@ -123,7 +127,7 @@ void SessionsList::Append(const char *_sid, const char *_login)
 {
     SessionsListNode *new_node = new SessionsListNode(_sid, _login);
 
-    if (head == 0) {
+    if (!head) {
         head = new_node;
         last = new_node;
         return;
@@ -167,38 +171,50 @@ bool Auth::Init(const char *filepath, const char *path_to_tokens)
 {
     tokens_path = strdup(path_to_tokens);
 
+    if (!file_exists(path_to_tokens)) {
+        LOG_I("auth: could not find path_to_tokens, creating %s", path_to_tokens);
+
+        if (mkdir(path_to_tokens, 0777)) {
+            LOG_E("auth: could not mkdir %s: %s", path_to_tokens, strerror(errno));
+            return false;
+        }
+    }
+
     char *login;
     char *password;
     AuthFileParser parser;
 
     FILE *file = fopen(filepath, "r");
     if (!file) {
-        LOG_E("Could not open auth file %s", filepath);
-        goto fin;
+        LOG_E("auth: could not open users file %s", filepath);
+        goto err;
     }
 
-    parser =  AuthFileParser(file);
+    parser = AuthFileParser(file);
     while (!parser.CheckEof()) {
         login = parser.ParseLogin();
         if (!login) {
             LOG_E("auth: error parsing login");
-            goto fin;
+            goto err;
         }
 
         password = parser.ParsePassword();
         if (!password) {
             LOG_E("auth: error parsing password");
-            goto fin;
+            goto err;
         }
 
         users_list.Append(login, password);
     }
 
     fclose(file);
+
     return true;
 
-fin:
-    LOG_E("Could not initialise auth");
+err:
+    LOG_E("auth: could not initialise");
+    if (file) fclose(file);
+
     return false;
 }
 
@@ -211,97 +227,93 @@ bool Auth::Check(const char *_login, const char *_password) const
 
 char *Auth::NewSession(const char *user)
 {
-    char *sid = _gen_random_string(SID_LEN);
+    char *sid = _gen_random_string(SidLen);
 
-    char *path = (char *)malloc(strlen(tokens_path) + sizeof "/" + SID_LEN);
+    char *path = (char *)malloc(strlen(tokens_path) + sizeof "/" + SidLen);
     memcpy(path, tokens_path, strlen(tokens_path) + 1);
     strcat(path, "/");
     strcat(path, sid);
 
-    bool err = true;
-    int n;
     int fd = open(path, O_CREAT | O_WRONLY, 0666);
-    if (fd == -1) {
-        goto fin;
+    free(path);
+
+    try {
+        if (fd == -1) {
+            throw NewSessionEx(strerror(errno));
+        }
+
+        int n = write(fd, user, strlen(user));
+        if (n != strlen(user)) {
+            throw NewSessionEx(strerror(errno));
+        }
+
+        close(fd);
+
+        return sid;
+    } catch (const NewSessionEx &ex) {
+        LOG_E("auth: could not save new session to disk: %s", ex.GetErrMsg());
+
+        if (fd != -1) close(fd);
+        free(sid);
+
+        throw;
     }
-
-    n = write(fd, user, strlen(user));
-    if (n != strlen(user)) {
-        goto fin;
-    }
-
-    err = false;
-
-fin:
-    if (fd != -1) close(fd);
-    if (path) free(path);
-
-    if (err) {
-        LOG_E("Could not save new session to disk");
-        if (sid) free(sid);
-        throw NewSessionEx(strerror(errno));
-    }
-
-    return sid;
 }
 
 
 void Auth::DeleteSession(const char *sid)
 {
-    char *path = (char *)malloc(strlen(tokens_path) + sizeof "/" + SID_LEN);
+    char *path = (char *)malloc(strlen(tokens_path) + sizeof "/" + SidLen);
     memcpy(path, tokens_path, strlen(tokens_path) + 1);
     strcat(path, "/");
     strcat(path, sid);
 
     if (remove(path)) {
-        LOG_E("Could not delete session %s", sid);
-        if (path) free(path);
+        LOG_E("auth: could not delete session %s", sid);
+        free(path);
 
         throw DeleteSessionEx(strerror(errno));
     }
 
-    if (path) free(path);
+    free(path);
 }
 
 
 char *Auth::GetUserBySession(const char *sid) const
 {
-    char *path = (char *)malloc(strlen(tokens_path) + sizeof "/" + SID_LEN);
+    char *path = (char *)malloc(strlen(tokens_path) + sizeof "/" + SidLen);
     memcpy(path, tokens_path, strlen(tokens_path) + 1);
     strcat(path, "/");
     strcat(path, sid);
 
-    char user[256], *ret = NULL;
-    int n;
-    bool err = true;
     int fd = open(path, O_RDONLY);
-    if (fd == -1) {
-        if (errno == ENOENT) {
-            LOG_W("Got a request with the non-existing session id %s", sid);
-            err = false;
+    free(path);
+
+    try {
+        if (fd == -1) {
+            if (errno == ENOENT) {
+                LOG_W("auth: got a request with the non-existing session id %s", sid);
+                return NULL;
+            }
+
+            throw GetUserBySessionEx(strerror(errno));
         }
 
-        goto fin;
+        char user[256];
+        int n = read(fd, user, sizeof user);
+        if (n == -1) {
+            throw GetUserBySessionEx(strerror(errno));
+        }
+
+        close(fd);
+
+        return strndup(user, n);
+    } catch (const GetUserBySessionEx &ex) {
+        LOG_E("auth: could not read user's session token from disk: %s", ex.GetErrMsg());
+        if (fd != -1) close(fd);
+
+        throw;
     }
-
-    n = read(fd, user, sizeof user);
-    if (n == -1) {
-        goto fin;
-    }
-
-    ret = strndup(user, n);
-    err = false;
-
-fin:
-    if (fd != -1) close(fd);
-    if (path) free(path);
-
-    if (err) {
-        LOG_E("Could not read user's session token from disk");
-        throw GetUserBySessionEx(strerror(errno));
-    }
-
-    return ret;
 }
 
 

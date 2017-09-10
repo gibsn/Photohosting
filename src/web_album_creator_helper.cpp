@@ -149,14 +149,14 @@ char *make_r_path_to_webpage(const char *user, const char *random_id)
 
 void album_creator_debug(const WebAlbumParams &cfg)
 {
-    LOG_D("path_to_archive: %s", cfg.path_to_archive);
-    LOG_D("web_page_title: %s", cfg.web_page_title);
-    LOG_D("path_to_srcs: %s", cfg.path_to_unpack);
-    LOG_D("path_to_thumbs: %s", cfg.path_to_thumbnails);
-    LOG_D("path_to_webpage: %s", cfg.path_to_webpage);
-    LOG_D("path_to_css: %s", cfg.path_to_css);
-    LOG_D("relative_path_to_srcs: %s", cfg.relative_path_to_originals);
-    LOG_D("relative_path_to_thmbs: %s", cfg.relative_path_to_thumbnails);
+    LOG_D("webalbumcreator: path_to_archive: %s", cfg.path_to_archive);
+    LOG_D("webalbumcreator: web_page_title: %s", cfg.web_page_title);
+    LOG_D("webalbumcreator: path_to_srcs: %s", cfg.path_to_unpack);
+    LOG_D("webalbumcreator: path_to_thumbs: %s", cfg.path_to_thumbnails);
+    LOG_D("webalbumcreator: path_to_webpage: %s", cfg.path_to_webpage);
+    LOG_D("webalbumcreator: path_to_css: %s", cfg.path_to_css);
+    LOG_D("webalbumcreator: relative_path_to_srcs: %s", cfg.relative_path_to_originals);
+    LOG_D("webalbumcreator: relative_path_to_thmbs: %s", cfg.relative_path_to_thumbnails);
 }
 
 
@@ -196,18 +196,18 @@ bool create_user_paths(
         const char *thmbs_path)
 {
     if (mkdir_p(srcs_path, 0777)) {
-        LOG_E("Could not create directory %s: %s", srcs_path, strerror(errno));
+        LOG_E("webalbumcreator: could not create directory %s: %s", srcs_path, strerror(errno));
         return false;
     }
 
-    LOG_I("Created directory %s", srcs_path);
+    LOG_I("webalbumcreator: created directory %s", srcs_path);
 
     if (mkdir_p(thmbs_path, 0777)) {
-        LOG_E("Could not create directory %s: %s", thmbs_path, strerror(errno));
+        LOG_E("webalbumcreator: could not create directory %s: %s", thmbs_path, strerror(errno));
         return false;
     }
 
-    LOG_I("Created directory %s", thmbs_path);
+    LOG_I("webalbumcreator: created directory %s", thmbs_path);
 
     return true;
 }
@@ -217,22 +217,22 @@ int clean_paths(const WebAlbumParams &cfg)
 {
     int ret = 0;
     if (rm_rf(cfg.path_to_unpack)) {
-        LOG_E("Could not delete original photos at %s", cfg.path_to_unpack);
+        LOG_E("webalbumcreator: could not delete original photos at %s", cfg.path_to_unpack);
         ret = -1;
     }
 
     if (remove(cfg.path_to_unpack)) {
-        LOG_E("Could not delete dir with the original photos at %s", cfg.path_to_unpack);
+        LOG_E("webalbumcreator: could not delete dir with the original photos at %s", cfg.path_to_unpack);
         ret = -1;
     }
 
     if (rm_rf(cfg.path_to_thumbnails)) {
-        LOG_E("Could not delete thumbnails at %s", cfg.path_to_thumbnails);
+        LOG_E("webalbumcreator: could not delete thumbnails at %s", cfg.path_to_thumbnails);
         ret = -1;
     }
 
     if (remove(cfg.path_to_thumbnails)) {
-        LOG_E("Could not delete dir with the thumbnails at %s", cfg.path_to_thumbnails);
+        LOG_E("webalbumcreator: could not delete dir with the thumbnails at %s", cfg.path_to_thumbnails);
         ret = -1;
     }
 

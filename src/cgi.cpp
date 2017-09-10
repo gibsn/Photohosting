@@ -10,6 +10,7 @@ extern "C" {
 #include "ccgi.h"
 }
 
+#include "auth.h"
 #include "cfg.h"
 #include "exceptions.h"
 #include "log.h"
@@ -153,84 +154,110 @@ fin:
 #undef QUERY_IS
 
 
-// TODO
-void Cgi::ProcessUploadPhotos()
+char *Cgi::GetSidFromCookies()
 {
-    char *user = NULL;
-    CGI_varlist *multipart = NULL;
     CGI_varlist *cookies = CGI_get_cookie(NULL);
     if (!cookies) {
-        SetStatus(http_forbidden);
-        Respond("You are not signed in");
-        return;
+        return NULL;
     }
 
     CGI_value sid = CGI_lookup(cookies, "sid");
     if (!sid) {
-        SetStatus(http_forbidden);
-        Respond("You are not signed in");
-        goto fin;
+        CGI_free_varlist(cookies);
+        return NULL;
     }
 
+    CGI_free_varlist(cookies);
+
+    return strdup(sid);
+}
+
+
+char *Cgi::GetUserBySid(const char *sid)
+{
     try {
-        user = photohosting->GetUserBySession(sid);
+        char *user = photohosting->GetUserBySession(sid);
         if (!user) {
             SetStatus(http_forbidden);
             Respond("You are not signed in");
-            goto fin;
+            return NULL;
         }
+
+        return user;
     } catch (AuthEx &ex) {
-        LOG_E("%s", ex.GetErrMsg());
         SetStatus(http_internal_error);
-        goto fin;
+        return NULL;
     }
+}
+
+
+char *Cgi::SaveFileFromPost()
+{
+    const char *path_to_tmp_files = photohosting->GetPathToTmpFiles();
+    char *tmp_file_path = (char *)malloc(strlen(path_to_tmp_files) + 1 + sizeof "photosXXXXXX");
+    strcpy(tmp_file_path, path_to_tmp_files);
+    strcat(tmp_file_path, "/");
+    strcat(tmp_file_path, "photosXXXXXX");
+
+    CGI_varlist *multipart = CGI_get_post(NULL, tmp_file_path);
+    free(tmp_file_path);
+
+    if (!multipart) {
+        SetStatus(http_internal_error);
+        return NULL;
+    }
+
+    CGI_value archive_path = CGI_lookup(multipart, "file");
+    if (!archive_path) {
+        CGI_free_varlist(multipart);
+        SetStatus(http_bad_request);
+        return NULL;
+    }
+
+    CGI_free_varlist(multipart);
+
+    return strdup(archive_path);
+}
+
+
+// TODO
+void Cgi::ProcessUploadPhotos()
+{
+    char *sid = GetSidFromCookies();
+    if (!sid) {
+        SetStatus(http_forbidden);
+        Respond("You are not signed in");
+        return;
+    }
+    char *user = GetUserBySid(sid);
+    free(sid);
+
+    if (!user) {
+        return;
+    }
+
+    char *archive_path = NULL;
+    char *album_path = NULL;
 
     try {
-        const char *path_to_tmp_files = photohosting->GetPathToTmpFiles();
-        char *tmp_file_path = (char *)malloc(strlen(path_to_tmp_files) + 1 + sizeof "photosXXXXXX");
-        strcpy(tmp_file_path, path_to_tmp_files);
-        strcat(tmp_file_path, "/");
-        strcat(tmp_file_path, "photosXXXXXX");
-
-        multipart = CGI_get_post(NULL, tmp_file_path);
-        free(tmp_file_path);
-        if (!multipart) {
-            SetStatus(http_internal_error);
-            goto fin;
-        }
-
-        CGI_value archive = CGI_lookup(multipart, "file");
-        if (!archive) {
-            SetStatus(http_bad_request);
-            goto fin;
-        }
-
+        archive_path = SaveFileFromPost();
         // TODO: get page title from somewhere
-        char *album_path = photohosting->CreateAlbum(user, archive, "test_album");
-        if (album_path) {
-            SetLocation(album_path);
-            SetStatus(http_see_other);
-            free(album_path);
-        } else {
-            SetStatus(http_bad_request);
-            Respond("Bad data");
-        }
-    } catch (NoSpace &ex) {
-        LOG_E("%s", ex.GetErrMsg());
+        album_path = photohosting->CreateAlbum(user, archive_path, "test_album");
+
+        SetLocation(album_path);
+        SetStatus(http_see_other);
+    } catch (const NoSpace &) {
         SetStatus(http_insufficient_storage);
-    } catch (UserEx &ex) {
-        LOG_E("%s", ex.GetErrMsg());
+    } catch (const UserEx &) {
         SetStatus(http_bad_request);
-        Respond(ex.GetErrMsg());
-    } catch (PhotohostingEx &ex) {
-        LOG_E("%s", ex.GetErrMsg());
+        Respond("Bad data");
+    } catch (const PhotohostingEx &) {
         SetStatus(http_internal_error);
     }
 
-fin:
     free(user);
-    CGI_free_varlist(cookies);
-    CGI_free_varlist(multipart);
+    free(archive_path);
+    free(album_path);
 }
 
 
@@ -260,12 +287,11 @@ void Cgi::ProcessLogin()
         }
 
         SetCookie("sid", new_sid);
+        free(new_sid);
+
         CloseHeaders();
         Respond("You have been successfully authorized");
-
-        free(new_sid);
-    } catch (AuthEx &ex) {
-        LOG_E("%s", ex.GetErrMsg());
+    } catch (const AuthEx &) {
         SetStatus(http_internal_error);
     }
 
@@ -298,14 +324,12 @@ void Cgi::ProcessLogout()
         }
 
         free(user);
-
         photohosting->Logout(sid);
 
         SetCookie("sid", "");
         CloseHeaders();
         Respond("You have successfully logged out");
     } catch (AuthEx &ex) {
-        LOG_E("%s", ex.GetErrMsg());
         SetStatus(http_internal_error);
     }
 

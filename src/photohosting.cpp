@@ -2,6 +2,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 
 #include "WebAlbumCreator.h"
 
@@ -29,24 +30,48 @@ Photohosting::~Photohosting()
     free(relative_path_to_css);
 }
 
+bool Photohosting::Init(const Config &cfg)
+{
+    if (!file_exists(cfg.path_to_store)) {
+        LOG_I("photohosting: could not find path_to_store, creating %s", cfg.path_to_store);
+
+        if (mkdir(cfg.path_to_store, 0777)) {
+            LOG_E("photohosting: could not mkdir %s: %s", cfg.path_to_store, strerror(errno));
+            return false;
+        }
+    }
+
+    if (!file_exists(cfg.path_to_tmp_files)) {
+        LOG_I("photohosting: could not find path_to_tmp_files, creating %s",
+                cfg.path_to_tmp_files);
+
+        if (mkdir(cfg.path_to_tmp_files, 0777)) {
+            LOG_E("photohosting: could not mkdir %s: %s", cfg.path_to_tmp_files, strerror(errno));
+            return false;
+        }
+    }
+
+    return true;
+}
+
 void Photohosting::_CreateAlbum(const WebAlbumParams &cfg)
 {
     try {
         try {
             CreateWebAlbum(cfg);
         } catch (Wac::Exception &ex) {
-            LOG_E("WebAlbumCreator: %s", ex.GetErrMsg());
+            LOG_E("webalbumcreator: %s", ex.GetErrMsg());
 
             if (clean_paths(cfg)) {
-                LOG_E("Could not clean paths after failing to create album");
+                LOG_E("photohosting: could not clean paths after failing to create album");
             } else {
-                LOG_I("Cleaned the paths after failing to create album");
+                LOG_I("photohosting: cleaned the paths after failing to create album");
             }
 
             throw;
         }
     } catch (Wac::NoSpace &ex) {
-        throw NoSpace("Failed to create album due to the lack of space");
+        throw NoSpace("failed to create album due to the lack of space");
     } catch (Wac::LibArchiveEx &ex) {
         throw BadArchive(ex.GetErrMsg());
     } catch (Wac::CorruptedImage &ex) {
@@ -67,25 +92,24 @@ char *Photohosting::SaveTmpFile(ByteArray *file)
     int fd = mkstemp(full_path);
     try {
         if (fd == -1) {
-            LOG_E("Could not save tmp file %s", full_path);
+            LOG_E("photohosting: could not save tmp file %s: %s", full_path, strerror(errno));
             throw SaveFileEx(strerror(errno));
         }
 
         int n = write(fd, file->data, file->size);
         if (file->size != n) {
-            LOG_E("Could not save tmp file %s", full_path);
+            LOG_E("photohosting: could not save tmp file %s: %s", full_path, strerror(errno));
             if (errno == ENOSPC) throw NoSpace(strerror(errno));
             throw SaveFileEx(strerror(errno));
         }
 
         close(fd);
+
         return full_path;
-    }
-    catch (SystemEx &ex) {
+    } catch (SystemEx &ex) {
         free(full_path);
         if (fd != -1) close(fd);
 
-        LOG_E("%s", ex.GetErrMsg());
         throw;
     }
 }
@@ -114,13 +138,16 @@ char *Photohosting::CreateAlbum(const char *user, const char *archive, const cha
     try {
         _CreateAlbum(cfg);
 
-        if (remove(archive)) LOG_E("Could not delete %s: %s", archive, strerror(errno));
+        if (remove(archive)) LOG_E("could not delete %s: %s", archive, strerror(errno));
         free_album_params(cfg);
 
         return path;
-    } catch (Exception &) {
-        LOG_E("Could not create album %s for user %s", title, user);
-        if (remove(archive)) LOG_E("Could not delete %s: %s", archive, strerror(errno));
+    } catch (const Exception &ex) {
+        LOG_E("photohosting: could not create album %s for user %s", title, user);
+
+        if (remove(archive)) {
+            LOG_E("photohosting: could not delete %s: %s", archive, strerror(errno));
+        }
 
         free(path);
         free_album_params(cfg);

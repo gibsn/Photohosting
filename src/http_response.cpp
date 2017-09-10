@@ -31,8 +31,8 @@ HttpResponse::HttpResponse(
 
 HttpResponse::~HttpResponse()
 {
-    if (response) free(response);
-    if (body) free(body);
+    free(response);
+    free(body);
 }
 
 

@@ -7,8 +7,6 @@
 
 #include "auth_driver.h"
 
-#define SID_LEN 32
-
 
 enum auth_file_parser_state_t {
     new_line,
@@ -98,6 +96,9 @@ class Auth: public AuthDriver{
     UsersList users_list;
 
     char *tokens_path;
+
+public:
+    const static int SidLen;
 
 public:
     Auth(): tokens_path(NULL) {};

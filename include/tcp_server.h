@@ -43,7 +43,7 @@ class TcpServer: public SelectLoopDriver {
     int n_sessions;
     TcpSession **sessions;
 
-    void Listen();
+    bool Listen();
     void Serve();
     void Wait();
 
@@ -69,8 +69,8 @@ public:
     void SetPort(int p) { port = p; }
     void SetWorkersCount(int n) { n_workers = n; }
 
-    virtual void Init();
-    virtual void ListenAndServe();
+    virtual bool Init();
+    virtual bool ListenAndServe();
 };
 
 #endif
