@@ -6,10 +6,6 @@
 #include <time.h>
 #include <unistd.h>
 
-extern "C" {
-#include "ccgi.h"
-}
-
 #include "auth.h"
 #include "cfg.h"
 #include "exceptions.h"
@@ -167,60 +163,48 @@ char *Cgi::GetSidFromCookies()
         return NULL;
     }
 
+    char *sid_dup = strdup(sid);
     CGI_free_varlist(cookies);
 
-    return strdup(sid);
+    return sid_dup;
 }
 
 
-char *Cgi::GetUserBySid(const char *sid)
+char *Cgi::CreateWebAlbum(const char *user)
 {
-    try {
-        char *user = photohosting->GetUserBySession(sid);
-        if (!user) {
-            SetStatus(http_forbidden);
-            Respond("You are not signed in");
-            return NULL;
-        }
-
-        return user;
-    } catch (AuthEx &ex) {
-        SetStatus(http_internal_error);
-        return NULL;
-    }
-}
-
-
-char *Cgi::SaveFileFromPost()
-{
-    const char *path_to_tmp_files = photohosting->GetPathToTmpFiles();
-    char *tmp_file_path = (char *)malloc(strlen(path_to_tmp_files) + 1 + sizeof "photosXXXXXX");
-    strcpy(tmp_file_path, path_to_tmp_files);
-    strcat(tmp_file_path, "/");
-    strcat(tmp_file_path, "photosXXXXXX");
-
-    CGI_varlist *multipart = CGI_get_post(NULL, tmp_file_path);
+    char *tmp_file_path = photohosting->GenerateTmpFilePathTemplate();
+    CGI_varlist *request_body = CGI_get_post(NULL, tmp_file_path);
     free(tmp_file_path);
 
-    if (!multipart) {
-        SetStatus(http_internal_error);
-        return NULL;
+    try {
+        if (!request_body) {
+            LOG_W("cgi: got bad POST-body from user %s", user);
+            throw HttpBadPostBody(user);
+        }
+
+        CGI_value archive_path = CGI_lookup(request_body, "file");
+        if (!archive_path) {
+            LOG_W("cgi: got bad file from user %s", user);
+            throw HttpBadFile(user);
+        }
+
+        CGI_value page_title = CGI_lookup(request_body, "title");
+        if (!page_title) {
+            LOG_W("cgi: got bad page title from user %s", user);
+            throw HttpBadPageTitle(user);
+        }
+
+        char *album_path = photohosting->CreateAlbum(user, archive_path, page_title);
+
+        CGI_free_varlist(request_body);
+
+        return album_path;
+    } catch(...) {
+        CGI_free_varlist(request_body);
+        throw;
     }
-
-    CGI_value archive_path = CGI_lookup(multipart, "file");
-    if (!archive_path) {
-        CGI_free_varlist(multipart);
-        SetStatus(http_bad_request);
-        return NULL;
-    }
-
-    CGI_free_varlist(multipart);
-
-    return strdup(archive_path);
 }
 
-
-// TODO
 void Cgi::ProcessUploadPhotos()
 {
     char *sid = GetSidFromCookies();
@@ -229,35 +213,38 @@ void Cgi::ProcessUploadPhotos()
         Respond("You are not signed in");
         return;
     }
-    char *user = GetUserBySid(sid);
-    free(sid);
 
-    if (!user) {
-        return;
-    }
-
-    char *archive_path = NULL;
-    char *album_path = NULL;
+    char *user = NULL;
 
     try {
-        archive_path = SaveFileFromPost();
-        // TODO: get page title from somewhere
-        album_path = photohosting->CreateAlbum(user, archive_path, "test_album");
+
+        user = photohosting->GetUserBySession(sid);
+        if (!user) {
+            SetStatus(http_forbidden);
+            Respond("You are not signed in");
+            free(sid);
+            return;
+        }
+
+        char *album_path = CreateWebAlbum(user);
 
         SetLocation(album_path);
         SetStatus(http_see_other);
+
+        free(album_path);
     } catch (const NoSpace &) {
         SetStatus(http_insufficient_storage);
     } catch (const UserEx &) {
         SetStatus(http_bad_request);
         Respond("Bad data");
+    } catch (const AuthEx &) {
+        SetStatus(http_internal_error);
     } catch (const PhotohostingEx &) {
         SetStatus(http_internal_error);
     }
 
+    free(sid);
     free(user);
-    free(archive_path);
-    free(album_path);
 }
 
 

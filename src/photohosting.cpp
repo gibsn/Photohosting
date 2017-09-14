@@ -82,32 +82,40 @@ void Photohosting::_CreateAlbum(const WebAlbumParams &cfg)
 }
 
 
-char *Photohosting::SaveTmpFile(ByteArray *file)
+char *Photohosting::GenerateTmpFilePathTemplate()
 {
     char *full_path = (char *)malloc(strlen(path_to_tmp_files) + 1 + sizeof "tmpXXXXXX");
     strcpy(full_path, path_to_tmp_files);
     strcat(full_path, "/");
     strcat(full_path, "tmpXXXXXX");
 
-    int fd = mkstemp(full_path);
+    return full_path;
+}
+
+
+char *Photohosting::SaveTmpFile(ByteArray *file)
+{
+    char *new_file_path = GenerateTmpFilePathTemplate();
+
+    int fd = mkstemp(new_file_path);
     try {
         if (fd == -1) {
-            LOG_E("photohosting: could not save tmp file %s: %s", full_path, strerror(errno));
+            LOG_E("photohosting: could not save tmp file %s: %s", new_file_path, strerror(errno));
             throw SaveFileEx(strerror(errno));
         }
 
         int n = write(fd, file->data, file->size);
         if (file->size != n) {
-            LOG_E("photohosting: could not save tmp file %s: %s", full_path, strerror(errno));
+            LOG_E("photohosting: could not save tmp file %s: %s", new_file_path, strerror(errno));
             if (errno == ENOSPC) throw NoSpace(strerror(errno));
             throw SaveFileEx(strerror(errno));
         }
 
         close(fd);
 
-        return full_path;
+        return new_file_path;
     } catch (SystemEx &ex) {
-        free(full_path);
+        free(new_file_path);
         if (fd != -1) close(fd);
 
         throw;

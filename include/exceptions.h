@@ -90,14 +90,23 @@ public:
     BadImage(const char *t): UserEx(t) {}
 };
 
-class HttpEx: public Exception {};
-
-class HttpBadFile: public HttpEx {
+class HttpBadPostBody: public UserEx {
 
 public:
-    HttpBadFile(const char *user);
+    HttpBadPostBody(const char *t): UserEx(t) {};
 };
 
+class HttpBadFile: public UserEx {
+
+public:
+    HttpBadFile(const char *t): UserEx(t) {};
+};
+
+class HttpBadPageTitle: public UserEx {
+
+public:
+    HttpBadPageTitle(const char *t): UserEx(t) {};
+};
 
 class PhotohostingEx: public Exception {
 

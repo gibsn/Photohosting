@@ -1,6 +1,10 @@
 #ifndef CGI_H_SENTRY
 #define CGI_H_SENTRY
 
+extern "C" {
+#include "ccgi.h"
+}
+
 #include "http_status_code.h"
 
 
@@ -19,9 +23,10 @@ class Cgi
     void ProcessLogin();
     void ProcessLogout();
 
+    char *CreateWebAlbum(const char *user);
+
     char *GetSidFromCookies();
     char *GetUserBySid(const char *sid);
-    char *SaveFileFromPost();
 
     // these close headers
     void SetStatus(http_status_t status);

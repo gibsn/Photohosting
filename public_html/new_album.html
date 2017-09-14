@@ -8,9 +8,19 @@
 
     <body>
         <form enctype="multipart/form-data" action="/upload/photos" method="post">
-            <p><b>Choose archive with photos (zip, tar, tar.gz are supported):</p></b>
-            <input type="file" name="file">
-            <input type="submit" value="Upload">
+            <p>
+                <b>Choose archive with photos (zip, tar, tar.gz are supported):</b>
+                <input type="file" name="file">
+            </p>
+
+            <p>
+                <b>Page title:</b>
+                <input type="text" name="title">
+            </p>
+
+            <p>
+                <input type="submit" value="Upload">
+            </p>
         </form>
     </body>
 </html>

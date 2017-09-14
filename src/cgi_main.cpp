@@ -13,14 +13,13 @@
 
 int main()
 {
-    // disabling logs
-    set_log_level(0);
-    close(2);
-
     Config cfg;
 
     if (!cfg.Init(PATH_TO_CFG)) return EXIT_FAILURE;
     cfg.Check();
+
+    get_pid_for_logger();
+    set_log_level(cfg.log_level);
 
     Auth auth;
     if (!auth.Init(cfg.path_to_pwd, cfg.path_to_tokens)) return EXIT_FAILURE;

@@ -25,6 +25,7 @@ public:
     bool Init(const Config &cfg);
 
     const char *GetPathToTmpFiles() const { return path_to_tmp_files; }
+    char *GenerateTmpFilePathTemplate();
 
     char *SaveTmpFile(ByteArray *file);
 
