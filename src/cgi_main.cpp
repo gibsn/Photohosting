@@ -18,8 +18,7 @@ int main()
     if (!cfg.Init(PATH_TO_CFG)) return EXIT_FAILURE;
     cfg.Check();
 
-    get_pid_for_logger();
-    set_log_level(cfg.log_level);
+    init_logger(cfg);
 
     Auth auth;
     if (!auth.Init(cfg.path_to_pwd, cfg.path_to_tokens)) return EXIT_FAILURE;

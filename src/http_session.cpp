@@ -192,43 +192,48 @@ void HttpSession::ProcessGetRequest()
 
 void HttpSession::ProcessPhotosUpload()
 {
-    LOG_I("http: client from %s is trying to upload photos", s_addr);
     char *user = NULL;
+    char *archive_path = NULL;
+    char *page_title = NULL;
+    char *album_path = NULL;
+
+    LOG_I("http: client from %s is trying to upload photos", s_addr);
 
     try {
         user = photohosting->GetUserBySession(request->sid);
-    } catch (AuthEx &ex) {
-        InitHttpResponse(http_internal_error);
-        return;
-    }
+        if (!user) {
+            LOG_I("http: client from %s is not authorised, responding 403", s_addr);
+            InitHttpResponse(http_forbidden);
+            goto fin;
+        }
 
-    if (!user) {
-        LOG_I("http: client from %s is not authorised, responding 403", s_addr);
-        InitHttpResponse(http_forbidden);
-        return;
-    }
+        archive_path = UploadFile(user);
 
-    try {
-        // TODO: get page title from somewhere
-        char *album_path = CreateWebAlbum(user, "test_album");
+        LOG_I("http: creating new album for user \'%s\'", user);
+        album_path = photohosting->CreateAlbum(user, archive_path, "test_album");
+
+        LOG_I("http: the album for user \'%s\' has been successfully created at %s",
+            user, album_path);
 
         InitHttpResponse(http_see_other);
         response->AddLocationHeader(album_path);
-
-        free(album_path);
     } catch (NoSpace &ex) {
         LOG_E("http: responding 507 to %s", user);
         InitHttpResponse(http_insufficient_storage);
     } catch (UserEx &ex) {
-        LOG_I("http: responding 404 to %s", user);
+        LOG_I("http: responding 400 to %s", user);
         InitHttpResponse(http_bad_request);
         response->SetBody("Bad data");
-    } catch (Exception &ex) {
+    } catch (...) {
         LOG_E("http: responding 500 to %s", user);
         InitHttpResponse(http_internal_error);
     }
 
+fin:
     free(user);
+    free(archive_path);
+    free(page_title);
+    free(album_path);
 }
 
 
@@ -318,40 +323,17 @@ void HttpSession::ProcessPostRequest()
 #undef LOCATION_STARTS_WITH
 
 
-char *HttpSession::CreateWebAlbum(const char *user, const char *page_title)
-{
-    char *archive_path = NULL;
-
-    try {
-        archive_path = UploadFile(user);
-
-        LOG_I("http: creating new album for user \'%s\'", user);
-        char *album_path = photohosting->CreateAlbum(user, archive_path, page_title);
-        free(archive_path);
-
-        LOG_I("http: the album for user \'%s\' has been successfully created at %s",
-            user, album_path);
-
-        return album_path;
-    } catch (Exception &) {
-        free(archive_path);
-        throw;
-    }
-}
-
-
 char *HttpSession::UploadFile(const char *user)
 {
     ByteArray* file = NULL;
     try {
-        // TODO: not quite right (can be more than one file)
         file = GetFileFromRequest();
         if (!file) throw HttpBadFile(user);
 
         LOG_I("http: got file from user %s (%d bytes)", user, file->size);
 
         return photohosting->SaveTmpFile(file);
-    } catch (PhotohostingEx &ex) {
+    } catch (...) {
         delete file;
         throw;
     }
@@ -361,7 +343,9 @@ char *HttpSession::UploadFile(const char *user)
 ByteArray *HttpSession::GetFileFromRequest() const
 {
     char *boundary = request->GetMultipartBondary();
-    if (!boundary) return NULL;
+    if (!boundary) {
+        return NULL;
+    }
 
     MultipartParser parser(boundary);
     parser.Execute(ByteArray(request->body, request->body_len));

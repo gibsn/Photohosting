@@ -2,16 +2,15 @@
 
 #include <string.h>
 
+#include "cfg.h"
+
+
 pid_t my_pid;
 int log_level;
+bool colour;
 
 
-void get_pid_for_logger()
-{
-    my_pid = getpid();
-}
-
-void set_log_level(const char *_log_level)
+static void set_log_level(const char *_log_level)
 {
     if (!_log_level) {
         log_level = 0;
@@ -29,4 +28,13 @@ void set_log_level(const char *_log_level)
     } else if (!strcmp(_log_level, "LOG_DEBUG")) {
         log_level = LOG_DEBUG;
     }
+}
+
+
+void init_logger(const Config &cfg)
+{
+    my_pid = getpid();
+    colour = cfg.log_colour;
+
+    set_log_level(cfg.log_level);
 }

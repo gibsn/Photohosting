@@ -207,31 +207,29 @@ char *Cgi::CreateWebAlbum(const char *user)
 
 void Cgi::ProcessUploadPhotos()
 {
-    char *sid = GetSidFromCookies();
-    if (!sid) {
-        SetStatus(http_forbidden);
-        Respond("You are not signed in");
-        return;
-    }
-
+    char *sid = NULL;
     char *user = NULL;
+    char *album_path = NULL;
 
     try {
+        sid = GetSidFromCookies();
+        if (!sid) {
+            SetStatus(http_forbidden);
+            Respond("You are not signed in");
+            goto fin;
+        }
 
         user = photohosting->GetUserBySession(sid);
         if (!user) {
             SetStatus(http_forbidden);
             Respond("You are not signed in");
-            free(sid);
-            return;
+            goto fin;
         }
 
-        char *album_path = CreateWebAlbum(user);
+        album_path = CreateWebAlbum(user);
 
         SetLocation(album_path);
         SetStatus(http_see_other);
-
-        free(album_path);
     } catch (const NoSpace &) {
         SetStatus(http_insufficient_storage);
     } catch (const UserEx &) {
@@ -243,8 +241,10 @@ void Cgi::ProcessUploadPhotos()
         SetStatus(http_internal_error);
     }
 
+fin:
     free(sid);
     free(user);
+    free(album_path);
 }
 
 

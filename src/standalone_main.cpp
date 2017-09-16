@@ -18,8 +18,7 @@ int main(int argc, char **argv)
     if (!cfg.Init(cfg.path_to_cfg)) return EXIT_FAILURE;
     cfg.Check();
 
-    get_pid_for_logger();
-    set_log_level(cfg.log_level);
+    init_logger(cfg);
     LOG_I("main: initialised logging");
     LOG_I("main: initialised config");
 

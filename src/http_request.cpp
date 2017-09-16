@@ -37,26 +37,21 @@ char *HttpRequest::GetMultipartBondary() const
 {
     for (int i = 0; i < n_headers; ++i) {
         if (CMP_HEADER("Content-Type")) {
-            char *boundary = NULL;
-            char *end;
-
             char *value = strndup(headers[i].value, headers[i].value_len);
             char *start = strstr(value, "boundary=");
-            if (!start) goto fin;
+            free(value);
+            if (!start) {
+                return NULL;
+            }
 
             start += sizeof "boundary=" - 1;
 
-            end = strchr(start, ';');
-
+            char *end = strchr(start, ';');
             if (end) {
-                boundary = strndup(start, end - start);
-            } else {
-                boundary = strdup(start);
+                return strndup(start, end - start);
             }
 
-fin:
-            free(value);
-            return boundary;
+            return strdup(start);
         }
     }
 
@@ -66,6 +61,7 @@ fin:
 #undef CMP_HEADER
 
 
+//TODO: parse the whole cookie
 void HttpRequest::ParseCookie(const char *value, int len)
 {
     char *value_copy = strndup(value, len);

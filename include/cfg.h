@@ -10,18 +10,27 @@
 
 #define CFG_STRING_TYPE char *
 #define CFG_STRING_DEF_VALUE NULL
-#define CFG_STRING_FREE(VAR) if (VAR) free(VAR);
+#define CFG_STRING_FREE(VAR) free(VAR);
 #define CFG_STRING_ASSIGN(VAR, VAL) VAR = VAL ? strdup(VAL) : CFG_STRING_DEF_VALUE
 #define CFG_STRING_PARSE(DICT, VAR, SECTION, NAME) \
     CFG_STRING_ASSIGN(VAR, iniparser_getstring(DICT, SECTION":"NAME, CFG_STRING_DEF_VALUE))
 
+#define CFG_BOOL_TYPE bool
+#define CFG_BOOL_DEF_VALUE false
+#define CFG_BOOL_FREE(VAR)
+#define CFG_BOOL_ASSIGN(VAR, VAL) VAR = VAL
+#define CFG_BOOL_PARSE(DICT, VAR, SECTION, NAME) \
+    CFG_BOOL_ASSIGN(VAR, iniparser_getboolean(DICT, SECTION":"NAME, CFG_BOOL_DEF_VALUE))
 
-//            var,               section,  name,                type,   def value
+
+//            var,               section,        name,                type,   def value
 #define CFG_GEN                                                                           \
+    CFG_ENTRY(log_level,         "log",          "level",             STRING, "LOG_INFO") \
+    CFG_ENTRY(log_colour,        "log",          "colour",            BOOL,   "false")    \
+                                                                                          \
     CFG_ENTRY(port,              "server",       "port",              INT,    80)         \
     CFG_ENTRY(addr,              "server",       "addr",              STRING, "0.0.0.0")  \
     CFG_ENTRY(n_workers,         "server",       "workers",           INT,    2)          \
-    CFG_ENTRY(log_level,         "server",       "log_level",         STRING, "LOG_INFO") \
     CFG_ENTRY(path_to_static,    "server",       "path_to_static",    STRING, ".")        \
     CFG_ENTRY(runas,             "server",       "runas",             STRING, NULL)       \
                                                                                           \

@@ -39,7 +39,7 @@ class HttpSession: public AppLayerDriver {
     void ProcessHeaders();
     void PrepareForNextRequest();
 
-    bool ValidateLocation(char *);
+    bool ValidateLocation(char *path);
 
     void ProcessGetRequest();
     void ProcessPostRequest();
@@ -54,7 +54,6 @@ class HttpSession: public AppLayerDriver {
     void ProcessStatic(const char *);
 
     char *UploadFile(const char *);
-    char *CreateWebAlbum(const char *user, const char *page_title);
 
     ByteArray *GetFileFromRequest() const;
 

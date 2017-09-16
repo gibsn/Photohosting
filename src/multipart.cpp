@@ -81,5 +81,5 @@ MultipartParser::~MultipartParser()
 
 void MultipartParser::Execute(const ByteArray &_body)
 {
-    int n = multipart_parser_execute(m_parser, _body.data + 2, _body.size - 2);
+    multipart_parser_execute(m_parser, _body.data + 2, _body.size - 2);
 }

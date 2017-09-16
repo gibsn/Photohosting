@@ -11,12 +11,12 @@
 
 extern pid_t my_pid;
 extern int log_level;
+extern bool colour;
 
 //TODO: fix logging, merges when multiple processes are launched (can use syslog)
 
-
-void get_pid_for_logger();
-void set_log_level(const char *log_level);
+struct Config;
+void init_logger(const Config &cfg);
 
 
 #define     LOG_ESCAPE(x)          "\033[01;" #x "m"
@@ -41,8 +41,6 @@ void set_log_level(const char *log_level);
 #define LOG_ANY(LEVEL, COLOUR, LEVEL_STR, STR, ...) do {           \
     if (LEVEL > log_level) break;                                  \
                                                                    \
-    fprintf(stderr, LOG_COLOUR_##COLOUR);                          \
-                                                                   \
     time_t t = time(NULL);                                         \
     struct tm *tm = localtime(&t);                                 \
     if (!tm) break;                                                \
@@ -55,9 +53,12 @@ void set_log_level(const char *log_level);
         tm->tm_sec                                                 \
     );                                                             \
                                                                    \
-    fprintf(stderr, "[%d]", my_pid);                               \
-    fprintf(stderr, "[" LEVEL_STR "] " LOG_COLOUR_NORMAL STR "\n", \
-        ##__VA_ARGS__);                                            \
+    if (colour) {\
+        fprintf(stderr, LOG_COLOUR_##COLOUR "[%d]""[" LEVEL_STR "] " LOG_COLOUR_NORMAL, my_pid);\
+    } else {\
+        fprintf(stderr, "[%d]""[" LEVEL_STR "] ", my_pid);\
+    }\
+        fprintf(stderr, STR "\n", ##__VA_ARGS__);                                            \
 } while(0);
 
 #endif
