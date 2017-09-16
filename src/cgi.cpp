@@ -16,11 +16,20 @@
 Cgi::Cgi(const Config &cfg, Photohosting *_photohosting)
     : photohosting(_photohosting)
 {
+    query_list = CGI_get_query(NULL);
+    cookies = CGI_get_cookie(NULL);
+
+    char *tmp_file_path = photohosting->GenerateTmpFilePathTemplate();
+    post_body = CGI_get_post(NULL, tmp_file_path);
+    free(tmp_file_path);
 }
 
 
 Cgi::~Cgi()
 {
+    CGI_free_varlist(query_list);
+    CGI_free_varlist(cookies);
+    CGI_free_varlist(post_body);
 }
 
 
@@ -43,10 +52,21 @@ void Cgi::Routine()
         return;
     }
 
+    if (!query_list) {
+        SetStatus(http_bad_request);
+        return;
+    }
+
+    CGI_value query = CGI_lookup(query_list, "q");
+    if (!query) {
+        SetStatus(http_not_found);
+        return;
+    }
+
     if (METHOD_IS("GET")) {
-        ProcessGetRequest();
+        ProcessGetRequest(query);
     } else if (METHOD_IS("POST")) {
-        ProcessPostRequest();
+        ProcessPostRequest(query);
     } else {
         SetStatus(http_not_found);
     }
@@ -112,27 +132,43 @@ void Cgi::Respond(const char *text)
 }
 
 
-// All get requests are supposed to be processed by the HTTP server, not cgi
-void Cgi::ProcessGetRequest()
-{
-    SetStatus(http_bad_request);
-}
-
-
 #define QUERY_IS(str)\
     strlen(query) == strlen(str) && \
     !strcmp(query, str)
 
-void Cgi::ProcessPostRequest()
+void Cgi::ProcessGetRequest(CGI_value query)
 {
-    CGI_varlist *query_list = CGI_get_query(NULL);
-
-    CGI_value query = CGI_lookup(query_list, "q");
-    if (!query) {
+    if (QUERY_IS("users")) {
+        ProcessUsers();
+    } else {
         SetStatus(http_not_found);
-        goto fin;
     }
+}
 
+
+void Cgi::ProcessUsers()
+{
+    try {
+        Users users_list = photohosting->GetUsers();
+        SetStatus(http_ok);
+
+        Users::username_node_t *p = users_list.root;
+        while(p) {
+            Respond(p->user->GetName());
+
+            Users::username_node_t *next = p->next;
+            delete p;
+
+            p = next;
+        }
+    } catch (const GetUsersEx &) {
+        SetStatus(http_internal_error);
+    }
+}
+
+
+void Cgi::ProcessPostRequest(CGI_value query)
+{
     if (QUERY_IS("upload_photos")) {
         ProcessUploadPhotos();
     } else if (QUERY_IS("login")) {
@@ -142,88 +178,58 @@ void Cgi::ProcessPostRequest()
     } else {
         SetStatus(http_not_found);
     }
-
-fin:
-    CGI_free_varlist(query_list);
 }
 
 #undef QUERY_IS
 
 
-char *Cgi::GetSidFromCookies()
+const char *Cgi::GetSidFromCookies()
 {
-    CGI_varlist *cookies = CGI_get_cookie(NULL);
     if (!cookies) {
         return NULL;
     }
 
-    CGI_value sid = CGI_lookup(cookies, "sid");
-    if (!sid) {
-        CGI_free_varlist(cookies);
-        return NULL;
-    }
-
-    char *sid_dup = strdup(sid);
-    CGI_free_varlist(cookies);
-
-    return sid_dup;
+    return CGI_lookup(cookies, "sid");
 }
 
 
 char *Cgi::CreateWebAlbum(const char *user)
 {
-    char *tmp_file_path = photohosting->GenerateTmpFilePathTemplate();
-    CGI_varlist *request_body = CGI_get_post(NULL, tmp_file_path);
-    free(tmp_file_path);
-
-    try {
-        if (!request_body) {
-            LOG_W("cgi: got bad POST-body from user %s", user);
-            throw HttpBadPostBody(user);
-        }
-
-        CGI_value archive_path = CGI_lookup(request_body, "file");
-        if (!archive_path) {
-            LOG_W("cgi: got bad file from user %s", user);
-            throw HttpBadFile(user);
-        }
-
-        CGI_value page_title = CGI_lookup(request_body, "title");
-        if (!page_title) {
-            LOG_W("cgi: got bad page title from user %s", user);
-            throw HttpBadPageTitle(user);
-        }
-
-        char *album_path = photohosting->CreateAlbum(user, archive_path, page_title);
-
-        CGI_free_varlist(request_body);
-
-        return album_path;
-    } catch(...) {
-        CGI_free_varlist(request_body);
-        throw;
+    if (!post_body) {
+        LOG_W("cgi: got bad POST-body from user %s", user);
+        throw HttpBadPostBody(user);
     }
+
+    CGI_value archive_path = CGI_lookup(post_body, "file");
+    if (!archive_path) {
+        LOG_W("cgi: got bad file from user %s", user);
+        throw HttpBadFile(user);
+    }
+
+    CGI_value page_title = CGI_lookup(post_body, "title");
+    if (!page_title) {
+        LOG_W("cgi: got bad page title from user %s", user);
+        throw HttpBadPageTitle(user);
+    }
+
+    return photohosting->CreateAlbum(user, archive_path, page_title);
 }
 
 void Cgi::ProcessUploadPhotos()
 {
-    char *sid = NULL;
-    char *user = NULL;
-    char *album_path = NULL;
-
     try {
-        sid = GetSidFromCookies();
+        const char *sid = GetSidFromCookies();
         if (!sid) {
             SetStatus(http_forbidden);
             Respond("You are not signed in");
-            goto fin;
+            return;
         }
 
         user = photohosting->GetUserBySession(sid);
         if (!user) {
             SetStatus(http_forbidden);
             Respond("You are not signed in");
-            goto fin;
+            return;
         }
 
         album_path = CreateWebAlbum(user);
@@ -240,29 +246,23 @@ void Cgi::ProcessUploadPhotos()
     } catch (const PhotohostingEx &) {
         SetStatus(http_internal_error);
     }
-
-fin:
-    free(sid);
-    free(user);
-    free(album_path);
 }
 
 
 void Cgi::ProcessLogin()
 {
-    CGI_varlist *auth_data = CGI_get_post(NULL, NULL);
-    if (!auth_data) {
+    if (!post_body) {
         SetStatus(http_bad_request);
         Respond("Login and password have not been provided");
         return;
     }
 
-    CGI_value user = CGI_lookup(auth_data, "login");
-    CGI_value password = CGI_lookup(auth_data, "password");
+    CGI_value user = CGI_lookup(post_body, "login");
+    CGI_value password = CGI_lookup(post_body, "password");
     if (!user || !password) {
         SetStatus(http_bad_request);
         Respond("Missing login/password");
-        goto fin;
+        return;
     }
 
     try {
@@ -270,7 +270,7 @@ void Cgi::ProcessLogin()
         if (!new_sid) {
             SetStatus(http_bad_request);
             Respond("Incorrect login/password");
-            goto fin;
+            return;
         }
 
         SetCookie("sid", new_sid);
@@ -281,14 +281,10 @@ void Cgi::ProcessLogin()
     } catch (const AuthEx &) {
         SetStatus(http_internal_error);
     }
-
-fin:
-    CGI_free_varlist(auth_data);
 }
 
 void Cgi::ProcessLogout()
 {
-    CGI_varlist *cookies = CGI_get_cookie(NULL);
     if (!cookies) {
         SetStatus(http_bad_request);
         Respond("You are not signed in");
@@ -299,7 +295,7 @@ void Cgi::ProcessLogout()
     if (!sid) {
         SetStatus(http_bad_request);
         Respond("You are not signed in");
-        goto fin;
+        return;
     }
 
     try {
@@ -307,7 +303,7 @@ void Cgi::ProcessLogout()
         if (!user) {
             SetStatus(http_bad_request);
             Respond("You are not signed in");
-            goto fin;
+            return;
         }
 
         free(user);
@@ -319,7 +315,4 @@ void Cgi::ProcessLogout()
     } catch (AuthEx &ex) {
         SetStatus(http_internal_error);
     }
-
-fin:
-    CGI_free_varlist(cookies);
 }

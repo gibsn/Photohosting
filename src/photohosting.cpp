@@ -1,8 +1,10 @@
 #include "photohosting.h"
 
 #include <errno.h>
+#include <dirent.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <string.h>
 
 #include "WebAlbumCreator.h"
 
@@ -18,6 +20,11 @@ Photohosting::Photohosting(Config &cfg, AuthDriver *_auth)
     : auth(_auth)
 {
     path_to_store = strdup(cfg.path_to_store);
+
+    path_to_users = (char *)malloc(strlen(cfg.path_to_store) + sizeof "/users/");
+    strcpy(path_to_users, path_to_store);
+    strcat(path_to_users, "/users/");
+
     path_to_tmp_files = strdup(cfg.path_to_tmp_files);
     relative_path_to_css = strdup(cfg.path_to_css);
 }
@@ -26,6 +33,7 @@ Photohosting::Photohosting(Config &cfg, AuthDriver *_auth)
 Photohosting::~Photohosting()
 {
     free(path_to_store);
+    free(path_to_users);
     free(path_to_tmp_files);
     free(relative_path_to_css);
 }
@@ -128,16 +136,14 @@ char *Photohosting::CreateAlbum(const char *user, const char *archive, const cha
     int random_id_len = 16;
     char *random_id = _gen_random_string(random_id_len);
 
-    char *user_path = make_user_path(path_to_store, user);
+    char *user_path = make_user_path(path_to_users, user);
 
     WebAlbumParams cfg = album_params_helper(user, user_path, random_id);
     cfg.path_to_archive = archive;
     cfg.web_page_title = title;
     cfg.path_to_css = make_path_to_css(relative_path_to_css);
 
-    album_creator_debug(cfg);
-
-    create_user_paths(user_path, cfg.path_to_unpack, cfg.path_to_thumbnails);
+    create_user_paths(cfg.path_to_unpack, cfg.path_to_thumbnails);
     char *path = make_r_path_to_webpage(user, random_id);
 
     free(random_id);
@@ -146,7 +152,9 @@ char *Photohosting::CreateAlbum(const char *user, const char *archive, const cha
     try {
         _CreateAlbum(cfg);
 
-        if (remove(archive)) LOG_E("could not delete %s: %s", archive, strerror(errno));
+        if (remove(archive)) LOG_E("photohosting: could not delete %s: %s",
+                archive, strerror(errno));
+
         free_album_params(cfg);
 
         return path;
@@ -189,3 +197,31 @@ char *Photohosting::GetUserBySession(const char *sid) {
     return auth->GetUserBySession(sid);
 }
 
+
+Users Photohosting::GetUsers()
+{
+    DIR *dir = opendir(path_to_users);
+    if (!dir) {
+        LOG_E("photohosting: could not open %s: %s", path_to_users, strerror(errno));
+        throw GetUsersEx(NULL);
+    }
+
+    Users users_list;
+    struct dirent *next_file;
+    while ((next_file = readdir(dir)) != NULL) {
+        if (0 == strcmp(next_file->d_name, ".") ||
+            0 == strcmp(next_file->d_name, "..")
+        ) {
+            continue;
+        }
+
+        Users::username_node_t *new_node = new Users::username_node_t;
+        new_node->user = new User(next_file->d_name);
+        new_node->next = users_list.root;
+        users_list.root = new_node;
+    }
+
+    closedir(dir);
+
+    return users_list;
+}

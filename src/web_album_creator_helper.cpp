@@ -14,12 +14,11 @@
 
 char *make_user_path(const char *path_to_store, const char *user)
 {
-    int user_path_len = strlen(path_to_store) + sizeof "/users/" - 1;
-    user_path_len += strlen(user) + sizeof "/";
+    int user_path_len = strlen(path_to_store) + 1 + strlen(user) + sizeof "/";
     char *user_path = (char *)malloc(user_path_len);
 
     strcpy(user_path, path_to_store);
-    strcat(user_path, "/users/");
+    strcat(user_path, "/");
     strcat(user_path, user);
     strcat(user_path, "/");
 
@@ -76,6 +75,7 @@ static char *make_path_to_webpage(const char *user_path, const char *random_id)
 }
 
 
+//TODO: hardcoded css???
 char *make_path_to_css(const char *path_to_css)
 {
     int path_to_css_file_len = sizeof "/static/" - 1;
@@ -190,10 +190,7 @@ void free_album_params(WebAlbumParams &cfg)
 }
 
 
-bool create_user_paths(
-        const char *user_path,
-        const char *srcs_path,
-        const char *thmbs_path)
+bool create_user_paths(const char *srcs_path, const char *thmbs_path)
 {
     if (mkdir_p(srcs_path, 0777)) {
         LOG_E("webalbumcreator: could not create directory %s: %s", srcs_path, strerror(errno));

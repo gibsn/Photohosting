@@ -15,8 +15,8 @@
 #define CFG_STRING_PARSE(DICT, VAR, SECTION, NAME) \
     CFG_STRING_ASSIGN(VAR, iniparser_getstring(DICT, SECTION":"NAME, CFG_STRING_DEF_VALUE))
 
-#define CFG_BOOL_TYPE bool
-#define CFG_BOOL_DEF_VALUE false
+#define CFG_BOOL_TYPE int
+#define CFG_BOOL_DEF_VALUE -1
 #define CFG_BOOL_FREE(VAR)
 #define CFG_BOOL_ASSIGN(VAR, VAL) VAR = VAL
 #define CFG_BOOL_PARSE(DICT, VAR, SECTION, NAME) \
@@ -26,7 +26,7 @@
 //            var,               section,        name,                type,   def value
 #define CFG_GEN                                                                           \
     CFG_ENTRY(log_level,         "log",          "level",             STRING, "LOG_INFO") \
-    CFG_ENTRY(log_colour,        "log",          "colour",            BOOL,   "false")    \
+    CFG_ENTRY(log_colour,        "log",          "colour",            BOOL,   false)      \
                                                                                           \
     CFG_ENTRY(port,              "server",       "port",              INT,    80)         \
     CFG_ENTRY(addr,              "server",       "addr",              STRING, "0.0.0.0")  \

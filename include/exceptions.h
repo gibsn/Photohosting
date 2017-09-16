@@ -114,5 +114,11 @@ public:
     PhotohostingEx(const char *t): Exception(t) {}
 };
 
+class GetUsersEx: public Exception {
+
+public:
+    GetUsersEx(const char *t): Exception(t) {}
+};
+
 
 #endif

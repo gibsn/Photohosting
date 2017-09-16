@@ -14,10 +14,19 @@ class Photohosting;
 
 class Cgi
 {
+    CGI_varlist *query_list;
+    CGI_varlist *cookies;
+    CGI_varlist *post_body;
+
+    char *user;
+    char *album_path;
+
     Photohosting *photohosting;
 
-    void ProcessGetRequest();
-    void ProcessPostRequest();
+    void ProcessGetRequest(CGI_value query);
+    void ProcessPostRequest(CGI_value query);
+
+    void ProcessUsers();
 
     void ProcessUploadPhotos();
     void ProcessLogin();
@@ -25,7 +34,7 @@ class Cgi
 
     char *CreateWebAlbum(const char *user);
 
-    char *GetSidFromCookies();
+    const char *GetSidFromCookies();
     char *GetUserBySid(const char *sid);
 
     // these close headers

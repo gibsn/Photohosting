@@ -17,10 +17,7 @@ WebAlbumParams album_params_helper(
 
 void free_album_params(WebAlbumParams &);
 
-bool create_user_paths(
-        const char *user_path,
-        const char *srcs_path,
-        const char *thmbs_path);
+bool create_user_paths(const char *srcs_path, const char *thmbs_path);
 
 int clean_paths(const WebAlbumParams &cfg);
 

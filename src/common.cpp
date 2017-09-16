@@ -232,7 +232,7 @@ int rm_rf(const char *path)
         free(new_path);
     }
 
-    if (dir) closedir(dir);
+    closedir(dir);
 
     return 0;
 }
