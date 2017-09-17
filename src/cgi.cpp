@@ -11,6 +11,7 @@
 #include "exceptions.h"
 #include "log.h"
 #include "photohosting.h"
+#include "users_api.h"
 
 
 Cgi::Cgi(const Config &cfg, Photohosting *_photohosting)
@@ -121,14 +122,14 @@ void Cgi::SetLocation(const char *location)
 
 void Cgi::CloseHeaders()
 {
-    fputs("\n", stdout);
+    putc('\n', stdout);
 }
 
 
 void Cgi::Respond(const char *text)
 {
     fputs(text, stdout);
-    fputs("\n", stdout);
+    putc('\n', stdout);
 }
 
 
@@ -138,30 +139,55 @@ void Cgi::Respond(const char *text)
 
 void Cgi::ProcessGetRequest(CGI_value query)
 {
-    if (QUERY_IS("users")) {
-        ProcessUsers();
+    if (QUERY_IS("list_users")) {
+        ProcessListUsers();
+    } else if (QUERY_IS("list_albums")) {
+        ProcessListAlbums();
     } else {
         SetStatus(http_not_found);
     }
 }
 
 
-void Cgi::ProcessUsers()
+void Cgi::ProcessListUsers()
 {
     try {
-        Users users_list = photohosting->GetUsers();
+        UserNames users_list(photohosting);
+        users_list.Init();
+
         SetStatus(http_ok);
 
-        Users::username_node_t *p = users_list.root;
-        while(p) {
-            Respond(p->user->GetName());
-
-            Users::username_node_t *next = p->next;
-            delete p;
-
-            p = next;
+        users_list.Reset();
+        while(const char *user_name = users_list.Next()) {
+            Respond(user_name);
         }
     } catch (const GetUsersEx &) {
+        SetStatus(http_internal_error);
+    }
+}
+
+
+void Cgi::ProcessListAlbums()
+{
+    try {
+        CGI_value user = CGI_lookup(query_list, "user");
+        if (!user) {
+            LOG_E("cgi: got list_albums request with no user specified");
+            throw UserNotFound(NULL);
+        }
+
+        AlbumTitles album_titles(photohosting);
+        album_titles.Init(user);
+
+        SetStatus(http_ok);
+
+        album_titles.Reset();
+        while(const char *album_title = album_titles.Next()) {
+            Respond(album_title);
+        }
+    } catch (const UserNotFound &) {
+        SetStatus(http_not_found);
+    } catch (const GetAlbumTitlesEx &) {
         SetStatus(http_internal_error);
     }
 }
@@ -197,19 +223,19 @@ char *Cgi::CreateWebAlbum(const char *user)
 {
     if (!post_body) {
         LOG_W("cgi: got bad POST-body from user %s", user);
-        throw HttpBadPostBody(user);
+        throw HttpBadPostBody(NULL);
     }
 
     CGI_value archive_path = CGI_lookup(post_body, "file");
     if (!archive_path) {
         LOG_W("cgi: got bad file from user %s", user);
-        throw HttpBadFile(user);
+        throw HttpBadFile(NULL);
     }
 
     CGI_value page_title = CGI_lookup(post_body, "title");
     if (!page_title) {
         LOG_W("cgi: got bad page title from user %s", user);
-        throw HttpBadPageTitle(user);
+        throw HttpBadPageTitle(NULL);
     }
 
     return photohosting->CreateAlbum(user, archive_path, page_title);

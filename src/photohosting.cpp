@@ -1,10 +1,10 @@
 #include "photohosting.h"
 
 #include <errno.h>
-#include <dirent.h>
 #include <fcntl.h>
-#include <sys/stat.h>
 #include <string.h>
+#include <stdlib.h>
+#include <sys/stat.h>
 
 #include "WebAlbumCreator.h"
 
@@ -198,30 +198,24 @@ char *Photohosting::GetUserBySession(const char *sid) {
 }
 
 
-Users Photohosting::GetUsers()
+bool Photohosting::UserExists(const char *user) const
 {
-    DIR *dir = opendir(path_to_users);
-    if (!dir) {
-        LOG_E("photohosting: could not open %s: %s", path_to_users, strerror(errno));
-        throw GetUsersEx(NULL);
-    }
+    char *path_to_user = (char *)malloc(strlen(path_to_users) + strlen(user));
+    strcpy(path_to_user, path_to_users);
+    strcat(path_to_user, user);
 
-    Users users_list;
-    struct dirent *next_file;
-    while ((next_file = readdir(dir)) != NULL) {
-        if (0 == strcmp(next_file->d_name, ".") ||
-            0 == strcmp(next_file->d_name, "..")
-        ) {
-            continue;
-        }
+    bool ret = file_exists(path_to_user);
+    free(path_to_user);
 
-        Users::username_node_t *new_node = new Users::username_node_t;
-        new_node->user = new User(next_file->d_name);
-        new_node->next = users_list.root;
-        users_list.root = new_node;
-    }
+    return ret;
+}
 
-    closedir(dir);
 
-    return users_list;
+char *Photohosting::GetUserDir(const char *user) const
+{
+    char *path_to_user = (char *)malloc(strlen(path_to_users) + strlen(user));
+    strcpy(path_to_user, path_to_users);
+    strcat(path_to_user, user);
+
+    return path_to_user;
 }

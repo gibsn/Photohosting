@@ -11,7 +11,7 @@ class Exception
 
 public:
     Exception(): err_msg(NULL) {}
-    Exception(const char *t) { err_msg = strdup(t); }
+    Exception(const char *t): err_msg(NULL) { if (t) err_msg = strdup(t); }
     virtual ~Exception() { free(err_msg); }
 
     virtual const char *GetErrMsg() const { return err_msg; }
@@ -108,17 +108,29 @@ public:
     HttpBadPageTitle(const char *t): UserEx(t) {};
 };
 
+
 class PhotohostingEx: public Exception {
 
 public:
     PhotohostingEx(const char *t): Exception(t) {}
 };
 
-class GetUsersEx: public Exception {
+class GetUsersEx: public PhotohostingEx {
 
 public:
-    GetUsersEx(const char *t): Exception(t) {}
+    GetUsersEx(const char *t): PhotohostingEx(t) {}
 };
 
+class GetAlbumTitlesEx: public PhotohostingEx {
+
+public:
+    GetAlbumTitlesEx(const char *t): PhotohostingEx(t) {}
+};
+
+class UserNotFound: public PhotohostingEx {
+
+public:
+    UserNotFound(const char *t): PhotohostingEx(t) {}
+};
 
 #endif

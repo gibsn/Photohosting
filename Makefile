@@ -24,6 +24,7 @@ STANDALONE_SRC_MODULES = \
 	photohosting.cpp     \
 	tcp_server.cpp       \
 	tcp_session.cpp      \
+	users_api.cpp        \
 	web_album_creator_helper.cpp
 
 STANDALONE_OBJ_MODULES = $(addprefix $(OBJ_DIR)/, $(notdir $(STANDALONE_SRC_MODULES:.cpp=.o)))
@@ -37,6 +38,7 @@ CGI_SRC_MODULES =    \
 	cgi.cpp          \
 	cgi_main.cpp     \
 	photohosting.cpp \
+	users_api.cpp    \
 	web_album_creator_helper.cpp
 
 CGI_OBJ_MODULES = $(addprefix $(OBJ_DIR)/, $(notdir $(CGI_SRC_MODULES:.cpp=.o)))

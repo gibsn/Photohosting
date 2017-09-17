@@ -26,7 +26,8 @@ class Cgi
     void ProcessGetRequest(CGI_value query);
     void ProcessPostRequest(CGI_value query);
 
-    void ProcessUsers();
+    void ProcessListUsers();
+    void ProcessListAlbums();
 
     void ProcessUploadPhotos();
     void ProcessLogin();

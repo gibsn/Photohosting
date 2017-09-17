@@ -2,39 +2,10 @@
 #define PHOTOHOSTING_H_SENTRY
 
 
-#include <string.h>
-#include <stdlib.h>
-
-
 struct WebAlbumParams;
 struct Config;
 struct ByteArray;
 class AuthDriver;
-
-
-class User
-{
-    char *name;
-
-public:
-    User(const char *s) { name = strdup(s); }
-    ~User() { free(name); }
-
-    const char *GetName() { return name; }
-};
-
-
-struct Users {
-    struct username_node_t {
-        User *user;
-        username_node_t *next;
-    } *root;
-
-    Users(): root(NULL) {};
-
-    // list is supposed to be freed manually
-    ~Users() {};
-};
 
 
 class Photohosting
@@ -55,8 +26,10 @@ public:
     bool Init(const Config &cfg);
 
     const char *GetPathToTmpFiles() const { return path_to_tmp_files; }
-    char *GenerateTmpFilePathTemplate();
+    const char *GetPathToUsers() const { return path_to_users; }
+    char *GetUserDir(const char *user) const;
 
+    char *GenerateTmpFilePathTemplate();
     char *SaveTmpFile(ByteArray *file);
 
     char *CreateAlbum(const char *user, const char *archive, const char *title);
@@ -65,7 +38,7 @@ public:
     char *GetUserBySession(const char *sid);
     void Logout(const char *sid);
 
-    Users GetUsers();
+    bool UserExists(const char *user) const;
 };
 
 
