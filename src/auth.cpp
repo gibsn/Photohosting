@@ -205,6 +205,9 @@ bool Auth::Init(const char *filepath, const char *path_to_tokens)
         }
 
         users_list.Append(login, password);
+        
+        free(login);
+        free(password);
     }
 
     fclose(file);

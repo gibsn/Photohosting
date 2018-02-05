@@ -4,23 +4,17 @@
 #include <string.h>
 #include <sys/types.h>
 
+extern "C" {
+#include "sue_base.h"
+}
+
 #include "select_loop_driver.h"
 #include "tcp_session.h"
 
-#define MAX_SESSIONS 1024
-
+#define MAX_FD 1024
 
 
 struct Config;
-
-
-struct SelectOpts {
-    int nfds;
-    fd_set readfds;
-    fd_set writefds;
-
-    SelectOpts();
-};
 
 
 struct Worker {
@@ -28,7 +22,7 @@ struct Worker {
 };
 
 
-class TcpServer: public SelectLoopDriver {
+class TcpServer {
     char *addr;
     int port;
 
@@ -36,9 +30,8 @@ class TcpServer: public SelectLoopDriver {
     Worker *workers;
     bool is_slave;
 
-    int listen_fd;
-
-    SelectOpts so;
+    struct sue_event_selector selector;
+    struct sue_fd_handler listen_fd_h;
 
     int n_sessions;
     TcpSession **sessions;
@@ -47,12 +40,15 @@ class TcpServer: public SelectLoopDriver {
     void Serve();
     void Wait();
 
+    static void ListenFdHandlerCb(sue_fd_handler *fd_h, int r, int w, int x);
+
+    static void FdHandlerCb(sue_fd_handler *fd_h, int r, int w, int x);
+    void FdHandler(TcpSession *session, int r, int w, int x);
+
     virtual void CloseSession(TcpSession *session);
 
-    void ProcessRead(const fd_set &readfds, TcpSession *session);
-    void ProcessWrite(const fd_set &writefds, TcpSession *session);
-
-    void RequestWriteForFd(int fd) { FD_SET(fd, &so.writefds); }
+    void ProcessRead(TcpSession *session);
+    void ProcessWrite(TcpSession *session);
 
 protected:
     virtual TcpSession *CreateNewSession();

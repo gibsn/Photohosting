@@ -140,7 +140,7 @@ char *AlbumTitles::ParseAlbumTitle(struct dirent *dirent)
     ByteArray *file = NULL;
 
     try {
-        path_to_album = (char *)malloc(strlen(path_to_user) + 1 + dirent->d_namlen + 1);
+        path_to_album = (char *)malloc(strlen(path_to_user) + 1 + strlen(dirent->d_name) + 1);
 
         strcpy(path_to_album, path_to_user);
         strcat(path_to_album, "/");

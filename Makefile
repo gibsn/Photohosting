@@ -46,13 +46,13 @@ CGI_OBJ_MODULES = $(addprefix $(OBJ_DIR)/, $(notdir $(CGI_SRC_MODULES:.cpp=.o)))
 TMP = $(addprefix $(DEPS_DIR)/, $(notdir $(wildcard $(SRC_DIR)/*.cpp)))
 DEPS_MODULES = $(TMP:.cpp=.d)
 
-BRIDGE_TARGETS = picohttpparser WebAlbumCreator multipart_parser iniparser ccgi
+BRIDGE_TARGETS = picohttpparser WebAlbumCreator multipart_parser iniparser ccgi sue
 
 CXXFLAGS += -I$(INCLUDE_DIR)
 CXXFLAGS += -I$(BRIDGE_DIR)/include
 
 LDFLAGS = -L $(BRIDGE_DIR)/lib/
-LDFLAGS += -l wac -l pico -l multipart -l iniparser -l ccgi
+LDFLAGS += -l wac -l pico -l multipart -l iniparser -l ccgi -l sue
 
 src_to_obj = $(addprefix $(OBJ_DIR)/, $(notdir $(1:.cpp=.o)))
 

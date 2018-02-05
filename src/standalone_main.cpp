@@ -31,7 +31,7 @@ int main(int argc, char **argv)
     LOG_I("main: initialised photohosting");
 
     HttpServer server(cfg, &photohosting);
-    server.Init();
+    if (!server.Init()) return EXIT_FAILURE;
     LOG_I("main: initialised http");
 
     if (cfg.runas && !change_user(cfg.runas)) return EXIT_FAILURE;

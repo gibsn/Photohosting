@@ -16,18 +16,24 @@
 #include "log.h"
 
 
-TcpServer::TcpServer()
-    : addr(NULL),
-    workers(NULL),
-    n_sessions(0)
-{
-}
+// TcpServer::TcpServer()
+//     : addr(NULL),
+//     workers(NULL),
+//     n_sessions(0)
+// {
+//     sue_event_selector_init(&selector);
+//     memset(&listen_fd_h, 0, sizeof(listen_fd_h));
+// }
 
 
 TcpServer::TcpServer(const Config &cfg)
     : workers(NULL),
-    n_sessions(0)
+    n_sessions(0),
+    sessions(NULL)
 {
+    sue_event_selector_init(&selector);
+    memset(&listen_fd_h, 0, sizeof(listen_fd_h));
+
     addr = strdup(cfg.addr);
     n_workers = cfg.n_workers;
     port = cfg.port;
@@ -50,7 +56,7 @@ TcpServer::~TcpServer()
 
 bool TcpServer::Init()
 {
-    listen_fd = socket(PF_INET, SOCK_STREAM, 0);
+    int listen_fd = socket(PF_INET, SOCK_STREAM, 0);
 
     if (listen_fd == -1) {
         LOG_E("tcp: could not create a listening socket: %s", strerror(errno));
@@ -76,7 +82,14 @@ bool TcpServer::Init()
     }
 
     workers = new Worker[n_workers];
-    sessions = new TcpSession *[MAX_SESSIONS];
+    sessions = new TcpSession *[MAX_FD];
+
+    listen_fd_h.fd = listen_fd;
+    listen_fd_h.handle_fd_event = (sue_fd_handler_cb_t)ListenFdHandlerCb;
+    listen_fd_h.userdata = this;
+    listen_fd_h.want_read = 1;
+
+    sue_event_selector_register_fd_handler(&selector, &listen_fd_h);
 
     return true;
 }
@@ -84,14 +97,12 @@ bool TcpServer::Init()
 
 bool TcpServer::Listen()
 {
-    if (listen(listen_fd, 5)) {
+    if (listen(listen_fd_h.fd, 5)) {
         LOG_E("tcp: could not start listening: %s", strerror(errno));
         return false;
     }
 
     LOG_I("tcp: listening on %s:%d", addr, port);
-    FD_SET(listen_fd, &so.readfds);
-    so.nfds = listen_fd + 1;
 
     is_slave = false;
     int pid;
@@ -118,93 +129,79 @@ bool TcpServer::Listen()
     return true;
 }
 
-
-void TcpServer::ProcessRead(const fd_set &readfds, TcpSession *session)
+void TcpServer::FdHandlerCb(sue_fd_handler *fd_h, int r, int w, int x)
 {
-    if (FD_ISSET(session->GetFd(), &readfds)) {
-        LOG_D("tcp: got data from %s (%d)", session->GetSAddr(), session->GetFd());
+    TcpSession *session = (TcpSession *)fd_h->userdata;
+    TcpServer *server = session->GetTcpServer();
+    server->FdHandler(session, r, w, x);
+}
 
-        if (!session->ReadToBuf()) {
-            LOG_D("tcp :the client from %s has closed the connection (%d)",
-                session->GetSAddr(), session->GetFd());
+void TcpServer::FdHandler(TcpSession *session, int r, int w, int x)
+{
+    if (r) {
+        ProcessRead(session);
+    }
 
-            CloseSession(session);
-            return;
-        }
+    if (w) {
+        ProcessWrite(session);
+    }
 
-        if (!session->ProcessRequest()) {
-            CloseSession(session);
-        }
+    if (session->GetWantToClose()) {
+        CloseSession(session);
     }
 }
 
 
-void TcpServer::ProcessWrite(const fd_set &writefds, TcpSession *session)
+void TcpServer::ProcessRead(TcpSession *session)
 {
-    if (FD_ISSET(session->GetFd(), &writefds)) {
-        FD_CLR(session->GetFd(), &so.writefds);
+    LOG_D("tcp: got data from %s [fd=%d]", session->GetSAddr(), session->GetFd());
 
-        LOG_D("tcp: sending data to %s (%d)", session->GetSAddr(), session->GetFd());
+    if (!session->ReadToBuf()) {
+        LOG_D("tcp: client from %s has closed the connection [fd=%d]",
+            session->GetSAddr(), session->GetFd());
 
-        if (!session->Flush()) {
-            CloseSession(session);
-            return;
-        }
-
-        LOG_D("tcp: successfully sent data to %s (%d)", session->GetSAddr(), session->GetFd());
-
-        if (session->GetWantToClose()) {
-            CloseSession(session);
-        }
+        session->SetWantToClose(true);
+        return;
     }
+
+    if (!session->ProcessRequest()) {
+        session->SetWantToClose(true);
+    }
+}
+
+
+void TcpServer::ProcessWrite(TcpSession *session)
+{
+    LOG_D("tcp: sending data to %s [fd=%d]", session->GetSAddr(), session->GetFd());
+
+    if (!session->Flush()) {
+        session->SetWantToClose(true);
+        return;
+    }
+
+    LOG_D("tcp: successfully sent data to %s [fd=%d]", session->GetSAddr(), session->GetFd());
 }
 
 
 void TcpServer::Serve()
 {
-    fd_set readfds, writefds;
-    writefds = so.writefds;
-    readfds = so.readfds;
-
-    while(select(so.nfds, &readfds, &writefds, NULL, NULL) > 0) {
-        if (FD_ISSET(listen_fd, &readfds)) CreateNewSession();
-
-        for (int i = 0; i < n_sessions; ++i) {
-            if (sessions[i]) ProcessRead(readfds, sessions[i]);
-            if (sessions[i]) ProcessWrite(writefds, sessions[i]);
-        }
-
-        writefds = so.writefds;
-        readfds = so.readfds;
-    }
+    sue_event_selector_go(&selector);
 }
 
 
+// TODO do i really need sessions here? if i do change to slist then
 void TcpServer::CloseSession(TcpSession *session)
 {
-    int i;
-    int fd = session->GetFd();
-    int max_fd = listen_fd;
-    //TODO: mb use binary search here
-    int curr_fd;
-    for (i = 0; i < n_sessions; ++i) {
-        curr_fd = sessions[i]->GetFd();
-        if (curr_fd == fd) break;
-        if (curr_fd > max_fd) max_fd = curr_fd;
+    sue_event_selector_remove_fd_handler(&selector, session->GetFdHandler());
+
+    int i = 0;
+    while (sessions[i++]->GetFd() != session->GetFd());
+
+    delete sessions[i-1];
+
+    for (; i < n_sessions; ++i) {
+        sessions[i - 1] = sessions[i];
     }
-
-    session->Close();
-    delete sessions[i];
-
-    for (int j = i + 1; j < n_sessions; ++j) {
-        if (sessions[j]->GetFd() > max_fd) max_fd = sessions[j]->GetFd();
-        sessions[j - 1] = sessions[j];
-    }
-    sessions[n_sessions - 1] = NULL;
-    so.nfds = max_fd + 1;
-
-    if (FD_ISSET(fd, &so.readfds)) FD_CLR(fd, &so.readfds);
-    if (FD_ISSET(fd, &so.writefds)) FD_CLR(fd, &so.writefds);
 
     n_sessions--;
 }
@@ -226,12 +223,18 @@ static bool set_socket_blocking(int sock)
     return true;
 }
 
+void TcpServer::ListenFdHandlerCb(sue_fd_handler *fd_h, int r, int w, int x)
+{
+    TcpServer *server = (TcpServer *)fd_h->userdata;
+    server->CreateNewSession();
+}
+
 
 TcpSession *TcpServer::CreateNewSession()
 {
     struct sockaddr_in client_addr;
     socklen_t client_len = sizeof(client_addr);
-    int fd = accept(listen_fd, (struct sockaddr *)&client_addr, &client_len);
+    int fd = accept(listen_fd_h.fd, (struct sockaddr *)&client_addr, &client_len);
 
     if (fd == -1) {
         if (errno != EAGAIN) {
@@ -247,21 +250,22 @@ TcpSession *TcpServer::CreateNewSession()
     char *client_s_addr = inet_ntoa(client_addr.sin_addr);
     LOG_I("tcp: accepted a new connection from %s", client_s_addr);
 
-    if (n_sessions >= MAX_SESSIONS) {
+    if (fd > MAX_FD) {
         shutdown(fd, SHUT_RDWR);
         close(fd);
-        LOG_W("tcp: declined connection from %s due to reaching MAX_SESSIONS", client_s_addr);
+        LOG_W("tcp: declined connection from %s due to reaching MAX_FD", client_s_addr);
 
         return NULL;
     }
 
-    sessions[n_sessions] = new TcpSession(fd, client_s_addr, this);
+    TcpSession *new_session = new TcpSession(fd, client_s_addr, this);
+    new_session->InitFdHandler((sue_fd_handler_cb_t)FdHandlerCb);
+    sue_event_selector_register_fd_handler(&selector, new_session->GetFdHandler());
+
+    sessions[n_sessions] = new_session;
     n_sessions++;
 
-    FD_SET(fd, &so.readfds);
-    if (fd + 1 > so.nfds) so.nfds = fd + 1;
-
-    return sessions[n_sessions - 1];
+    return new_session;
 }
 
 
@@ -271,6 +275,7 @@ void TcpServer::Wait()
     int stat_loc;
     for (int i = 0; i < n_workers; ++i) {
         pid = wait(&stat_loc);
+        // TODO wrong condition
         if (WIFEXITED(stat_loc)) {
             LOG_I("tcp: worker %d has exited normally", pid);
         } else {
@@ -287,19 +292,9 @@ bool TcpServer::ListenAndServe()
     if (is_slave) {
         Serve();
     } else {
-        close(listen_fd);
+        close(listen_fd_h.fd);
         Wait();
     }
 
     return true;
 }
-
-
-SelectOpts::SelectOpts()
-    : nfds(0)
-{
-    FD_ZERO(&readfds);
-    FD_ZERO(&writefds);
-}
-
-

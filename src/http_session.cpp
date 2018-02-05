@@ -85,7 +85,6 @@ bool HttpSession::ProcessRequest()
     bool ret = true;
 
     ByteArray *tcp_read_buf = tcp_session->GetReadBuf();
-    tcp_session->TruncateReadBuf();
 
     if (!read_buf) read_buf = new ByteArray;
     //TODO: guess I can allocate Content-Length just once

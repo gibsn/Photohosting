@@ -3,6 +3,7 @@
 bridge/include
 bridge/lib
 deps
+*.mk
 *.a
 *.o
 .clang_complete

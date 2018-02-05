@@ -170,22 +170,31 @@ char *_gen_random_string(int length) {
 
 int mkdir_p(const char *path, mode_t mode)
 {
-    if (!path) return true;
+    if (!path) {
+        return -1;
+    }
 
-    char *curr_dir = strchr(path + 1, '/');
+    int ret = 0;
+    char *_path = strdup(path);
+    char *curr_dir = strchr(_path + 1, '/');
+
     while(curr_dir) {
         char c = *curr_dir;
         *curr_dir = '\0';
 
-        if (!file_exists(path)) {
-            if (mkdir(path, mode)) return -1;
+        if (!file_exists(_path)) {
+            if (mkdir(_path, mode)) {
+                ret = -1;
+                break;
+            }
         }
 
         *curr_dir = c;
         curr_dir = strchr(++curr_dir, '/');
     }
 
-    return 0;
+    free(_path);
+    return ret;
 }
 
 

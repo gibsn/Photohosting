@@ -152,8 +152,9 @@ char *Photohosting::CreateAlbum(const char *user, const char *archive, const cha
     try {
         _CreateAlbum(cfg);
 
-        if (remove(archive)) LOG_E("photohosting: could not delete %s: %s",
-                archive, strerror(errno));
+        if (remove(archive)) {
+            LOG_E("photohosting: could not delete %s: %s", archive, strerror(errno));
+        }
 
         free_album_params(cfg);
 

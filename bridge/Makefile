@@ -17,6 +17,9 @@ INIPARSER_STATIC = libiniparser.a
 CCGI_DIR = ../$(EXTERNALS_BASEDIR)/ccgi-1.2
 CCGI_STATIC = libccgi.a
 
+SUE_DIR = ../$(EXTERNALS_BASEDIR)/sue
+SUE_STATIC = libsue.a
+
 
 WebAlbumCreator:
 	@echo "Compiling WebAlbumCreator"
@@ -51,6 +54,12 @@ ccgi:
 	cp $(CCGI_DIR)/$(CCGI_STATIC) $(LIBRARY_DIR)
 	cp $(CCGI_DIR)/ccgi.h $(INCLUDE_DIR)
 
+sue:
+	@echo "Compiling sue"
+	make -C $(SUE_DIR) -f Makefile static
+	cp $(SUE_DIR)/$(SUE_STATIC) $(LIBRARY_DIR)
+	cp $(SUE_DIR)/sue_base.h $(INCLUDE_DIR)
+
 
 clean:
 	make -C $(PICOHTTPPARSER_DIR) -f Makefile clean
@@ -58,6 +67,7 @@ clean:
 	make -C $(MULTIPARTPARSER_DIR) -f Makefile clean
 	make -C $(INIPARSER_DIR) -f Makefile clean
 	make -C $(CCGI_DIR) -f Makefile clean
+	make -C $(SUE_DIR) -f Makefile clean
 
-.PHONY: WebAlbumCreator picohttpparser multipart_parser iniparser ccgi clean
+.PHONY: WebAlbumCreator picohttpparser multipart_parser iniparser ccgi sue clean
 
