@@ -16,16 +16,6 @@
 #include "log.h"
 
 
-// TcpServer::TcpServer()
-//     : addr(NULL),
-//     workers(NULL),
-//     n_sessions(0)
-// {
-//     sue_event_selector_init(&selector);
-//     memset(&listen_fd_h, 0, sizeof(listen_fd_h));
-// }
-
-
 TcpServer::TcpServer(const Config &cfg)
     : workers(NULL),
     n_sessions(0),
@@ -85,7 +75,7 @@ bool TcpServer::Init()
     sessions = new TcpSession *[MAX_FD];
 
     listen_fd_h.fd = listen_fd;
-    listen_fd_h.handle_fd_event = (sue_fd_handler_cb_t)ListenFdHandlerCb;
+    listen_fd_h.handle_fd_event = ListenFdHandlerCb;
     listen_fd_h.userdata = this;
     listen_fd_h.want_read = 1;
 
@@ -151,13 +141,29 @@ void TcpServer::FdHandler(TcpSession *session, int r, int w, int x)
     }
 }
 
+void TcpServer::ToutHandlerCb(sue_timeout_handler *tout_h)
+{
+    TcpSession *session = (TcpSession *)tout_h->userdata;
+    TcpServer *server = session->GetTcpServer();
+    server->ToutHandler(session);
+}
+
+void TcpServer::ToutHandler(TcpSession *session)
+{
+    LOG_I("tcp: closing idle connection from %s [fd=%d]",
+        session->GetSAddr(), session->GetFd());
+
+    CloseSession(session);
+}
 
 void TcpServer::ProcessRead(TcpSession *session)
 {
+    session->ResetIdleTout(&selector);
+
     LOG_D("tcp: got data from %s [fd=%d]", session->GetSAddr(), session->GetFd());
 
     if (!session->ReadToBuf()) {
-        LOG_D("tcp: client from %s has closed the connection [fd=%d]",
+        LOG_I("tcp: client from %s has closed the connection [fd=%d]",
             session->GetSAddr(), session->GetFd());
 
         session->SetWantToClose(true);
@@ -193,6 +199,7 @@ void TcpServer::Serve()
 void TcpServer::CloseSession(TcpSession *session)
 {
     sue_event_selector_remove_fd_handler(&selector, session->GetFdHandler());
+    sue_event_selector_remove_timeout_handler(&selector, session->GetToutHandler());
 
     int i = 0;
     while (sessions[i++]->GetFd() != session->GetFd());
@@ -258,9 +265,9 @@ TcpSession *TcpServer::CreateNewSession()
         return NULL;
     }
 
-    TcpSession *new_session = new TcpSession(fd, client_s_addr, this);
-    new_session->InitFdHandler((sue_fd_handler_cb_t)FdHandlerCb);
-    sue_event_selector_register_fd_handler(&selector, new_session->GetFdHandler());
+    TcpSession *new_session = new TcpSession(client_s_addr, this, fd, FdHandlerCb, ToutHandlerCb);
+    new_session->InitFdHandler(&selector);
+    new_session->InitIdleTout(&selector);
 
     sessions[n_sessions] = new_session;
     n_sessions++;

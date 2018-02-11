@@ -9,21 +9,13 @@
 #include "log.h"
 
 
-// TcpSession::TcpSession()
-//     : active(false),
-//     select_driver(NULL),
-//     session_driver(NULL),
-//     read_buf_len(0),
-//     write_buf(NULL),
-//     write_buf_len(0),
-//     write_buf_offset(0),
-//     s_addr(NULL),
-//     want_to_close(false)
-// {
-// }
-
-TcpSession::TcpSession(int _fd, char *_s_addr, TcpServer *_tcp_server)
-    : active(true),
+TcpSession::TcpSession(
+        char *_s_addr,
+        TcpServer *_tcp_server,
+        int _fd,
+        sue_fd_handler_cb_t fd_cb,
+        sue_tout_handler_cb_t tout_cb)
+  : active(true),
     s_addr(NULL),
     session_driver(NULL),
     tcp_server(_tcp_server),
@@ -33,11 +25,16 @@ TcpSession::TcpSession(int _fd, char *_s_addr, TcpServer *_tcp_server)
     write_buf_offset(0),
     want_to_close(false)
 {
+    s_addr = strdup(_s_addr);
+
     memset(&fd_h, 0, sizeof(fd_h));
     fd_h.fd = _fd;
-    fd_h.want_read = 1;
+    fd_h.userdata = this;
+    fd_h.handle_fd_event = fd_cb;
 
-    s_addr = strdup(_s_addr);
+    memset(&tout_h, 0, sizeof(tout_h));
+    tout_h.userdata = this;
+    tout_h.handle_timeout = tout_cb;
 }
 
 
@@ -75,6 +72,24 @@ TcpSession::~TcpSession()
 void TcpSession::TruncateReadBuf()
 {
     read_buf_len = 0;
+}
+
+void TcpSession::InitFdHandler(sue_event_selector *selector)
+{
+    fd_h.want_read = 1;
+    sue_event_selector_register_fd_handler(selector, &fd_h);
+}
+
+void TcpSession::InitIdleTout(sue_event_selector *selector)
+{
+    sue_timeout_handler_set_from_now(&tout_h, IDLE_TIMEOUT, 0);
+    sue_event_selector_register_timeout_handler(selector, &tout_h);
+}
+
+void TcpSession::ResetIdleTout(sue_event_selector *selector)
+{
+    sue_event_selector_remove_timeout_handler(selector, &tout_h);
+    InitIdleTout(selector);
 }
 
 

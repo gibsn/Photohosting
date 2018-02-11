@@ -2,6 +2,7 @@
 #define TCP_SESSION_H_SENTRY
 
 #define READ_BUF_SIZE 4096
+#define IDLE_TIMEOUT 60 //sec
 
 extern "C" {
 #include "sue_base.h"
@@ -12,7 +13,7 @@ extern "C" {
 #include "select_loop_driver.h"
 
 typedef void (*sue_fd_handler_cb_t)(struct sue_fd_handler*, int, int, int);
-
+typedef void (*sue_tout_handler_cb_t)(struct sue_timeout_handler*);
 
 class TcpServer;
 class AppLayerDriver;
@@ -20,6 +21,7 @@ class AppLayerDriver;
 class TcpSession
 {
     sue_fd_handler fd_h;
+    sue_timeout_handler tout_h;
 
     bool active;
     char *s_addr;
@@ -40,8 +42,14 @@ class TcpSession
     void TruncateWriteBuf();
 
 public:
-    TcpSession();
-    TcpSession(int fd, char *s_addr, TcpServer *tcp_server);
+    TcpSession(
+        char *_s_addr,
+        TcpServer *_tcp_server,
+        int _fd,
+        sue_fd_handler_cb_t cb,
+        sue_tout_handler_cb_t tout_cb
+    );
+
     ~TcpSession();
 
     bool ReadToBuf();
@@ -50,17 +58,19 @@ public:
     bool ProcessRequest();
     void Close();
 
-    void InitFdHandler(sue_fd_handler_cb_t cb) {
-        fd_h.userdata = this;
-        fd_h.handle_fd_event = cb;
-    }
-
     TcpServer *GetTcpServer() { return tcp_server; }
     int GetFd() const { return fd_h.fd; }
     const char *GetSAddr() const { return s_addr; }
     ByteArray *GetReadBuf();
     bool GetWantToClose() const { return want_to_close; }
+
     sue_fd_handler *GetFdHandler() { return &fd_h; }
+    sue_timeout_handler *GetToutHandler() { return &tout_h; }
+
+    void InitFdHandler(sue_event_selector *selector);
+
+    void InitIdleTout(sue_event_selector *selector);
+    void ResetIdleTout(sue_event_selector *selector);
 
     void Send(ByteArray *);
     void SetWantToClose(bool b) { want_to_close = b; }

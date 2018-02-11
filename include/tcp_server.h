@@ -45,6 +45,9 @@ class TcpServer {
     static void FdHandlerCb(sue_fd_handler *fd_h, int r, int w, int x);
     void FdHandler(TcpSession *session, int r, int w, int x);
 
+    static void ToutHandlerCb(sue_timeout_handler *tout_h);
+    void ToutHandler(TcpSession *session);
+
     virtual void CloseSession(TcpSession *session);
 
     void ProcessRead(TcpSession *session);
