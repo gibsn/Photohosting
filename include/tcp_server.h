@@ -49,7 +49,7 @@ class TcpServer {
     void ToutHandler(TcpSession *session);
 
     TcpSession *CreateTcpSession();
-    virtual void CreateSession(TcpSession *tcp_session);
+    virtual AppLayerDriver *CreateSession(TcpSession *tcp_session);
     virtual void CloseSession(TcpSession *tcp_session);
 
     void ProcessRead(TcpSession *session);

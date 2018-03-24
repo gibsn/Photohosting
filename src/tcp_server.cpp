@@ -243,7 +243,8 @@ void TcpServer::ListenFdHandlerCb(sue_fd_handler *fd_h, int r, int w, int x)
         return;
     }
 
-    server->CreateSession(tcp_session);
+    AppLayerDriver *app_layer_session = server->CreateSession(tcp_session);
+    tcp_session->SetSessionDriver(app_layer_session);
 }
 
 
@@ -286,8 +287,9 @@ TcpSession *TcpServer::CreateTcpSession()
 }
 
 
-void TcpServer::CreateSession(TcpSession *tcp_session)
+AppLayerDriver *TcpServer::CreateSession(TcpSession *tcp_session)
 {
+    return NULL;
 }
 
 

@@ -41,12 +41,12 @@ char *HttpServer::AddPathToStaticPrefix(const char *path) const
 }
 
 
-void HttpServer::CreateSession(TcpSession *tcp_session)
+AppLayerDriver *HttpServer::CreateSession(TcpSession *tcp_session)
 {
     assert(tcp_session);
 
     HttpSession *http_session = new HttpSession(tcp_session, this);
-    tcp_session->SetSessionDriver(http_session);
+    return http_session;
 }
 
 
