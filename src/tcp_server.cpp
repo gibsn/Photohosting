@@ -136,6 +136,10 @@ void TcpServer::FdHandler(TcpSession *session, int r, int w, int x)
         ProcessWrite(session);
     }
 
+    // TODO wtf is x?
+    if (x) {
+    }
+
     if (session->GetWantToClose()) {
         CloseSession(session);
     }
@@ -233,11 +237,17 @@ static bool set_socket_blocking(int sock)
 void TcpServer::ListenFdHandlerCb(sue_fd_handler *fd_h, int r, int w, int x)
 {
     TcpServer *server = (TcpServer *)fd_h->userdata;
-    server->CreateNewSession();
+
+    TcpSession *tcp_session = server->CreateTcpSession();
+    if (!tcp_session) {
+        return;
+    }
+
+    server->CreateSession(tcp_session);
 }
 
 
-TcpSession *TcpServer::CreateNewSession()
+TcpSession *TcpServer::CreateTcpSession()
 {
     struct sockaddr_in client_addr;
     socklen_t client_len = sizeof(client_addr);
@@ -273,6 +283,11 @@ TcpSession *TcpServer::CreateNewSession()
     n_sessions++;
 
     return new_session;
+}
+
+
+void TcpServer::CreateSession(TcpSession *tcp_session)
+{
 }
 
 

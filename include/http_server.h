@@ -19,9 +19,9 @@ class HttpServer: public TcpServer {
 
     Photohosting *photohosting;
 
-    virtual TcpSession *CreateNewSession();
-
     char *AddPathToStaticPrefix(const char *) const;
+
+    virtual void CreateSession(TcpSession *tcp_session);
 
 public:
     HttpServer(const Config &cfg, Photohosting *photohosting);

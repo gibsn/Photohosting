@@ -82,26 +82,22 @@ fin:
 
 bool HttpSession::ProcessRequest()
 {
-    bool ret = true;
-
     ByteArray *tcp_read_buf = tcp_session->GetReadBuf();
 
     if (!read_buf) read_buf = new ByteArray;
-    //TODO: guess I can allocate Content-Length just once
     read_buf->Append(tcp_read_buf);
+    delete tcp_read_buf;
+
+    // hexdump((uint8_t *)read_buf->data, read_buf->size);
 
     switch(ParseHttpRequest(read_buf)) {
     case ok:
         break;
     case incomplete_request:
-        goto fin;
-        break;
+        return true;
     case invalid_request:
-        ret = false;
-        goto fin;
-        break;
+        return false;
     }
-    // hexdump((uint8_t *)read_buf->data, read_buf->size);
 
     if (!ValidateLocation(strndup(request->path, request->path_len))) {
         InitHttpResponse(http_bad_request);
@@ -118,10 +114,7 @@ bool HttpSession::ProcessRequest()
     if (!keep_alive) tcp_session->SetWantToClose(true);
     PrepareForNextRequest();
 
-fin:
-    delete tcp_read_buf;
-
-    return ret;
+    return true;
 }
 
 #undef LOCATION_CONTAINS

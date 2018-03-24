@@ -48,13 +48,12 @@ class TcpServer {
     static void ToutHandlerCb(sue_timeout_handler *tout_h);
     void ToutHandler(TcpSession *session);
 
-    virtual void CloseSession(TcpSession *session);
+    TcpSession *CreateTcpSession();
+    virtual void CreateSession(TcpSession *tcp_session);
+    virtual void CloseSession(TcpSession *tcp_session);
 
     void ProcessRead(TcpSession *session);
     void ProcessWrite(TcpSession *session);
-
-protected:
-    virtual TcpSession *CreateNewSession();
 
 public:
     TcpServer();

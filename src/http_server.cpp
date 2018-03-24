@@ -41,21 +41,12 @@ char *HttpServer::AddPathToStaticPrefix(const char *path) const
 }
 
 
-//TODO: not sure if it is good to return TcpSession * here
-TcpSession *HttpServer::CreateNewSession()
+void HttpServer::CreateSession(TcpSession *tcp_session)
 {
-    TcpSession *tcp_session = TcpServer::CreateNewSession();
-    // TODO: here TcpServer returns NULL when EAGAIN happens as well
-    if (!tcp_session) {
-        // LOG_E("http: could not open a new session");
-        return NULL;
-    }
+    assert(tcp_session);
 
     HttpSession *http_session = new HttpSession(tcp_session, this);
-
     tcp_session->SetSessionDriver(http_session);
-
-    return tcp_session;
 }
 
 
