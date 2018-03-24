@@ -186,8 +186,8 @@ bool Auth::Init(const char *filepath, const char *path_to_tokens)
 
     FILE *file = fopen(filepath, "r");
     if (!file) {
-        LOG_E("auth: could not open users file %s", filepath);
-        goto err;
+        LOG_W("auth: could not open users file %s, starting without auth", filepath);
+        return true;
     }
 
     parser = AuthFileParser(file);
@@ -205,7 +205,7 @@ bool Auth::Init(const char *filepath, const char *path_to_tokens)
         }
 
         users_list.Append(login, password);
-        
+
         free(login);
         free(password);
     }
