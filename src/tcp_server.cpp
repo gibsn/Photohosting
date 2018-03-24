@@ -141,7 +141,8 @@ void TcpServer::FdHandler(TcpSession *session, int r, int w, int x)
     }
 
     if (session->GetWantToClose()) {
-        CloseSession(session);
+        CloseSession(session->GetAppLayerSession());
+        CloseTcpSession(session);
     }
 }
 
@@ -157,7 +158,8 @@ void TcpServer::ToutHandler(TcpSession *session)
     LOG_I("tcp: closing idle connection from %s [fd=%d]",
         session->GetSAddr(), session->GetFd());
 
-    CloseSession(session);
+    CloseSession(session->GetAppLayerSession());
+    CloseTcpSession(session);
 }
 
 void TcpServer::ProcessRead(TcpSession *session)
@@ -174,9 +176,7 @@ void TcpServer::ProcessRead(TcpSession *session)
         return;
     }
 
-    if (!session->ProcessRequest()) {
-        session->SetWantToClose(true);
-    }
+    session->ProcessRequest();
 }
 
 
@@ -199,8 +199,14 @@ void TcpServer::Serve()
 }
 
 
+// TODO mb inherit app_layer_session from tcp_session?
+void TcpServer::CloseSession(AppLayerDriver *session)
+{
+}
+
+
 // TODO do i really need sessions here? if i do change to slist then
-void TcpServer::CloseSession(TcpSession *session)
+void TcpServer::CloseTcpSession(TcpSession *session)
 {
     sue_event_selector_remove_fd_handler(&selector, session->GetFdHandler());
     sue_event_selector_remove_timeout_handler(&selector, session->GetToutHandler());
@@ -244,7 +250,7 @@ void TcpServer::ListenFdHandlerCb(sue_fd_handler *fd_h, int r, int w, int x)
     }
 
     AppLayerDriver *app_layer_session = server->CreateSession(tcp_session);
-    tcp_session->SetSessionDriver(app_layer_session);
+    tcp_session->SetAppLayerSession(app_layer_session);
 }
 
 

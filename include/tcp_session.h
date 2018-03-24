@@ -23,10 +23,9 @@ class TcpSession
     sue_fd_handler fd_h;
     sue_timeout_handler tout_h;
 
-    bool active;
     char *s_addr;
 
-    AppLayerDriver *session_driver;
+    AppLayerDriver *app_layer_session;
     TcpServer *tcp_server;
 
     char read_buf[READ_BUF_SIZE];
@@ -38,8 +37,8 @@ class TcpSession
 
     bool want_to_close;
 
-    void TruncateReadBuf();
-    void TruncateWriteBuf();
+    void ResetReadBuf();
+    void ResetWriteBuf();
 
 public:
     TcpSession(
@@ -55,7 +54,7 @@ public:
     bool ReadToBuf();
     bool Flush();
 
-    bool ProcessRequest();
+    void ProcessRequest();
     void Close();
 
     TcpServer *GetTcpServer() { return tcp_server; }
@@ -63,9 +62,13 @@ public:
     const char *GetSAddr() const { return s_addr; }
     ByteArray *GetReadBuf();
     bool GetWantToClose() const { return want_to_close; }
+    AppLayerDriver *GetAppLayerSession() { return app_layer_session; }
 
     sue_fd_handler *GetFdHandler() { return &fd_h; }
     sue_timeout_handler *GetToutHandler() { return &tout_h; }
+
+    void SetWantToClose(bool b) { want_to_close = b; }
+    void SetAppLayerSession(AppLayerDriver *session) { app_layer_session = session; }
 
     void InitFdHandler(sue_event_selector *selector);
 
@@ -73,8 +76,6 @@ public:
     void ResetIdleTout(sue_event_selector *selector);
 
     void Send(ByteArray *);
-    void SetWantToClose(bool b) { want_to_close = b; }
-    void SetSessionDriver(AppLayerDriver *_sd) { session_driver = _sd; }
 };
 
 

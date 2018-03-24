@@ -50,7 +50,9 @@ class TcpServer {
 
     TcpSession *CreateTcpSession();
     virtual AppLayerDriver *CreateSession(TcpSession *tcp_session);
-    virtual void CloseSession(TcpSession *tcp_session);
+
+    void CloseTcpSession(TcpSession *tcp_session);
+    virtual void CloseSession(AppLayerDriver *session);
 
     void ProcessRead(TcpSession *session);
     void ProcessWrite(TcpSession *session);

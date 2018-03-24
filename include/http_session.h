@@ -2,20 +2,20 @@
 #define HTTP_SESSION_H_SENTRY
 
 #include "app_layer_driver.h"
+#include "common.h"
+#include "http_request.h"
+#include "http_response.h"
 #include "http_status_code.h"
 
 
 class Photohosting;
 class HttpServer;
-struct HttpRequest;
-struct HttpResponse;
 class TcpSession;
-struct ByteArray;
 
 typedef enum {
     ok = 0,
-    incomplete_request = -1,
-    invalid_request = -2
+    invalid_request = -1,
+    incomplete_request = -2,
 } request_parser_result_t;
 
 
@@ -25,17 +25,17 @@ class HttpSession: public AppLayerDriver {
 
     char *s_addr;
 
-    ByteArray *read_buf;
+    ByteArray read_buf;
+    uint32_t last_len;
 
-    bool active;
     TcpSession *tcp_session;
 
-    HttpRequest *request;
-    HttpResponse *response;
+    HttpRequest request;
+    HttpResponse response;
 
     bool keep_alive;
 
-    request_parser_result_t ParseHttpRequest(ByteArray *);
+    request_parser_result_t ParseHttpRequest();
     void ProcessHeaders();
     void PrepareForNextRequest();
 
@@ -46,6 +46,7 @@ class HttpSession: public AppLayerDriver {
 
     void InitHttpResponse(http_status_t status);
     void Respond();
+    void Reset();
 
     void ProcessLogin();
     void ProcessLogout();
@@ -61,13 +62,8 @@ public:
     HttpSession(TcpSession *, HttpServer *);
     ~HttpSession();
 
-    virtual bool ProcessRequest();
-    virtual void Close();
-
-    const HttpRequest *GetRequest() const { return request; }
-    const bool GetKeepAlive() const { return keep_alive; }
-
-    void SetKeepAlive(bool b) { keep_alive = b; }
+    virtual void ProcessRequest();
+    void Close();
 };
 
 #endif

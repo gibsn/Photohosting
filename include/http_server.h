@@ -22,6 +22,7 @@ class HttpServer: public TcpServer {
     char *AddPathToStaticPrefix(const char *) const;
 
     AppLayerDriver *CreateSession(TcpSession *tcp_session);
+    void CloseSession(AppLayerDriver *session);
 
 public:
     HttpServer(const Config &cfg, Photohosting *photohosting);

@@ -14,7 +14,7 @@ HttpRequest::HttpRequest()
     path(NULL),
     path_len(0),
     headers_len(0),
-    n_headers(100),
+    n_headers(MAX_HTTP_HEADERS),
     sid(NULL),
     if_modified_since(NULL),
     body(NULL),
@@ -67,7 +67,10 @@ void HttpRequest::ParseCookie(const char *value, int len)
     char *value_copy = strndup(value, len);
     char *start = strstr(value_copy, "sid=");
 
-    if (!start) return;
+    if (!start) {
+        free(value_copy);
+        return;
+    }
 
     start += sizeof "sid=" - 2;
     char *save_start = start + 1;
@@ -81,3 +84,10 @@ void HttpRequest::ParseCookie(const char *value, int len)
     free(value_copy);
 }
 
+
+void HttpRequest::Reset()
+{
+    this->~HttpRequest();
+    memset(this, 0, sizeof(*this));
+    n_headers = MAX_HTTP_HEADERS;
+}

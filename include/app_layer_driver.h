@@ -6,8 +6,7 @@ class AppLayerDriver
 public:
     virtual ~AppLayerDriver() {};
 
-    virtual bool ProcessRequest() = 0;
-    virtual void Close() = 0;
+    virtual void ProcessRequest() = 0;
 };
 
 

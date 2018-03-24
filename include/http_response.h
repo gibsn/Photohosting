@@ -48,7 +48,6 @@ struct HttpResponse {
 
 public:
     HttpResponse();
-    HttpResponse(http_status_t code, int minor_version, bool keep_alive);
     ~HttpResponse();
 
     ByteArray *GetResponseByteArray();
@@ -58,6 +57,8 @@ public:
     void SetBody(const char *buf);
 
     void AddDefaultBodies();
+
+    void Reset();
 };
 
 

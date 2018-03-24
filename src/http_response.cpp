@@ -7,25 +7,9 @@
 #include "log.h"
 
 
-HttpResponse::HttpResponse(
-    http_status_t _code,
-    int _minor_version = 0,
-    bool _keep_alive = false
-)
-    : response(NULL),
-    response_len(0),
-    minor_version(_minor_version),
-    code(_code),
-    keep_alive(_keep_alive),
-    body(NULL),
-    body_len(0),
-    finalised(false)
+HttpResponse::HttpResponse()
 {
-    AddStatusLine();
-
-    AddDateHeader();
-    AddServerHeader();
-    AddConnectionHeader(keep_alive);
+    memset(this, 0, sizeof(*this));
 }
 
 
@@ -223,3 +207,10 @@ void HttpResponse::AddDefaultBodies()
 }
 
 #undef HTTP_RESPONSE_ENTRY
+
+
+void HttpResponse::Reset()
+{
+    this->~HttpResponse();
+    memset(this, 0, sizeof(*this));
+}

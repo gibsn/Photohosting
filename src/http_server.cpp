@@ -50,6 +50,13 @@ AppLayerDriver *HttpServer::CreateSession(TcpSession *tcp_session)
 }
 
 
+void HttpServer::CloseSession(AppLayerDriver *session)
+{
+    HttpSession *http_session = dynamic_cast<HttpSession *>(session);
+    delete http_session;
+}
+
+
 // TODO: should differentiate situations when file doesnt exist and is forbidden
 ByteArray *HttpServer::GetFileByPath(const char *path)
 {

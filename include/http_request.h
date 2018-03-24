@@ -34,6 +34,8 @@ struct HttpRequest {
     void ParseCookie(const char *value, int value_len);
 
     char *GetMultipartBondary() const;
+
+    void Reset();
 };
 
 

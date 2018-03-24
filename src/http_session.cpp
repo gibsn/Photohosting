@@ -11,7 +11,6 @@
 #include "picohttpparser.h"
 
 #include "auth.h"
-#include "common.h"
 #include "exceptions.h"
 #include "http_request.h"
 #include "http_response.h"
@@ -25,12 +24,8 @@
 HttpSession::HttpSession(TcpSession *_tcp_session, HttpServer *_http_server)
     : http_server(_http_server),
     photohosting(_http_server->GetPhotohosting()),
-    s_addr(NULL),
-    read_buf(NULL),
-    active(true),
+    last_len(0),
     tcp_session(_tcp_session),
-    request(NULL),
-    response(NULL),
     keep_alive(true)
 {
     s_addr = strdup(tcp_session->GetSAddr());
@@ -39,26 +34,28 @@ HttpSession::HttpSession(TcpSession *_tcp_session, HttpServer *_http_server)
 
 HttpSession::~HttpSession()
 {
-    if (active) this->Close();
-
-    delete read_buf;
+    Close();
     free(s_addr);
-
-    delete request;
-    delete response;
 }
 
 
 void HttpSession::Close()
 {
     LOG_I("http: closing session");
-    active = false;
 }
 
 
 void HttpSession::InitHttpResponse(http_status_t status)
 {
-    response = new HttpResponse(status, request->minor_version, keep_alive);
+    response.code = status;
+    response.minor_version = request.minor_version;
+    response.keep_alive = keep_alive;
+
+    response.AddStatusLine();
+
+    response.AddDateHeader();
+    response.AddServerHeader();
+    response.AddConnectionHeader(keep_alive);
 }
 
 
@@ -77,29 +74,34 @@ fin:
 
 
 #define METHOD_IS(str)\
-    request->method_len == strlen(str) && \
-    !strncmp(request->method, str, request->method_len)
+    request.method_len == strlen(str) && \
+    !strncmp(request.method, str, request.method_len)
 
-bool HttpSession::ProcessRequest()
+void HttpSession::ProcessRequest()
 {
     ByteArray *tcp_read_buf = tcp_session->GetReadBuf();
 
-    if (!read_buf) read_buf = new ByteArray;
-    read_buf->Append(tcp_read_buf);
+    read_buf.Append(tcp_read_buf);
     delete tcp_read_buf;
 
-    // hexdump((uint8_t *)read_buf->data, read_buf->size);
+    // hexdump((uint8_t *)read_buf.data, read_buf.size);
 
-    switch(ParseHttpRequest(read_buf)) {
+    switch(ParseHttpRequest()) {
+    case incomplete_request:
+        LOG_W("http: got an incomplete request")
+        last_len = read_buf.size;
+        request.Reset();
+        return;
+    case invalid_request:
+        LOG_E("http: failed to parse request");
+        InitHttpResponse(http_bad_request);
+        tcp_session->SetWantToClose(true);
+        goto fin;
     case ok:
         break;
-    case incomplete_request:
-        return true;
-    case invalid_request:
-        return false;
     }
 
-    if (!ValidateLocation(strndup(request->path, request->path_len))) {
+    if (!ValidateLocation(strndup(request.path, request.path_len))) {
         InitHttpResponse(http_bad_request);
     } else if (METHOD_IS("GET")) {
         ProcessGetRequest();
@@ -109,12 +111,13 @@ bool HttpSession::ProcessRequest()
         InitHttpResponse(http_not_found);
     }
 
+    if (!keep_alive) {
+        tcp_session->SetWantToClose(true);
+    }
+
+fin:
     Respond();
-
-    if (!keep_alive) tcp_session->SetWantToClose(true);
-    PrepareForNextRequest();
-
-    return true;
+    Reset();
 }
 
 #undef LOCATION_CONTAINS
@@ -132,11 +135,11 @@ void HttpSession::ProcessStatic(const char *path)
         return;
     }
 
-    if (request->if_modified_since) {
+    if (request.if_modified_since) {
         struct tm if_modified_since_tm;
 
         if (!strptime(
-                request->if_modified_since,
+                request.if_modified_since,
                 "%a, %d %b %Y %H:%M:%S GMT",
                 &if_modified_since_tm
         )){
@@ -146,7 +149,7 @@ void HttpSession::ProcessStatic(const char *path)
 
         if (difftime(_stat.st_mtime, timegm(&if_modified_since_tm)) <= 0) {
             InitHttpResponse(http_not_modified);
-            response->AddLastModifiedHeader(_stat.st_mtime);
+            response.AddLastModifiedHeader(_stat.st_mtime);
             return;
         }
     }
@@ -158,8 +161,8 @@ void HttpSession::ProcessStatic(const char *path)
     }
 
     InitHttpResponse(http_ok);
-    response->AddLastModifiedHeader(_stat.st_mtime);
-    response->SetBody(file);
+    response.AddLastModifiedHeader(_stat.st_mtime);
+    response.SetBody(file);
 
     delete file;
 }
@@ -167,11 +170,11 @@ void HttpSession::ProcessStatic(const char *path)
 
 void HttpSession::ProcessGetRequest()
 {
-    char *path = strndup(request->path, request->path_len);
+    char *path = strndup(request.path, request.path_len);
 
     if (LOCATION_IS("/")) {
         InitHttpResponse(http_see_other);
-        response->AddLocationHeader("/static/index.html");
+        response.AddLocationHeader("/static/index.html");
     } else if (LOCATION_STARTS_WITH("/static/")) {
         ProcessStatic(path);
     } else {
@@ -192,7 +195,7 @@ void HttpSession::ProcessPhotosUpload()
     LOG_I("http: client from %s is trying to upload photos", s_addr);
 
     try {
-        user = photohosting->GetUserBySession(request->sid);
+        user = photohosting->GetUserBySession(request.sid);
         if (!user) {
             LOG_I("http: client from %s is not authorised, responding 403", s_addr);
             InitHttpResponse(http_forbidden);
@@ -208,14 +211,14 @@ void HttpSession::ProcessPhotosUpload()
             user, album_path);
 
         InitHttpResponse(http_see_other);
-        response->AddLocationHeader(album_path);
+        response.AddLocationHeader(album_path);
     } catch (NoSpace &ex) {
         LOG_E("http: responding 507 to %s", user);
         InitHttpResponse(http_insufficient_storage);
     } catch (UserEx &ex) {
         LOG_I("http: responding 400 to %s", user);
         InitHttpResponse(http_bad_request);
-        response->SetBody("Bad data");
+        response.SetBody("Bad data");
     } catch (...) {
         LOG_E("http: responding 500 to %s", user);
         InitHttpResponse(http_internal_error);
@@ -231,8 +234,8 @@ fin:
 
 void HttpSession::ProcessLogin()
 {
-    char *user = Auth::ParseLoginFromReq(request->body, request->body_len);
-    char *password = Auth::ParsePasswordFromReq(request->body, request->body_len);
+    char *user = Auth::ParseLoginFromReq(request.body, request.body_len);
+    char *password = Auth::ParsePasswordFromReq(request.body, request.body_len);
     if (!user || !password) {
         InitHttpResponse(http_bad_request);
         goto fin;
@@ -249,7 +252,7 @@ void HttpSession::ProcessLogin()
         LOG_I("http: user %s has authorised from %s", user, s_addr);
 
         InitHttpResponse(http_ok);
-        response->AddCookieHeader("sid", new_sid);
+        response.AddCookieHeader("sid", new_sid);
 
         free(new_sid);
     } catch (AuthEx &ex) {
@@ -267,19 +270,19 @@ void HttpSession::ProcessLogout()
     char *user = NULL;
 
     try {
-        user = photohosting->GetUserBySession(request->sid);
+        user = photohosting->GetUserBySession(request.sid);
         if (!user) {
             LOG_I("http: unauthorised user from %s attempted to sign out", s_addr);
             InitHttpResponse(http_bad_request);
-            response->SetBody("You are not signed in");
+            response.SetBody("You are not signed in");
             return;
         }
 
-        photohosting->Logout(request->sid);
+        photohosting->Logout(request.sid);
         LOG_I("http: user %s has signed out from %s", user, s_addr);
 
         InitHttpResponse(http_ok);
-        response->AddCookieHeader("sid", "");
+        response.AddCookieHeader("sid", "");
     } catch (AuthEx &ex) {
         if (user) {
             LOG_E("http: could not log out user %s", user);
@@ -296,7 +299,7 @@ void HttpSession::ProcessLogout()
 
 void HttpSession::ProcessPostRequest()
 {
-    char *path = strndup(request->path, request->path_len);
+    char *path = strndup(request.path, request.path_len);
 
     if (LOCATION_IS("/upload/photos")) {
         ProcessPhotosUpload();
@@ -334,13 +337,13 @@ char *HttpSession::UploadFile(const char *user)
 
 ByteArray *HttpSession::GetFileFromRequest() const
 {
-    char *boundary = request->GetMultipartBondary();
+    char *boundary = request.GetMultipartBondary();
     if (!boundary) {
         return NULL;
     }
 
     MultipartParser parser(boundary);
-    parser.Execute(ByteArray(request->body, request->body_len));
+    parser.Execute(ByteArray(request.body, request.body_len));
 
     ByteArray *body = parser.GetBody();
 
@@ -352,65 +355,52 @@ ByteArray *HttpSession::GetFileFromRequest() const
 
 void HttpSession::Respond()
 {
-    if (!response->body) {
-        response->AddDefaultBodies();
+    if (!response.body) {
+        response.AddDefaultBodies();
     }
 
-    ByteArray *r = response->GetResponseByteArray();
+    ByteArray *r = response.GetResponseByteArray();
     tcp_session->Send(r);
 
     delete r;
 }
 
 
-request_parser_result_t HttpSession::ParseHttpRequest(ByteArray *req)
+request_parser_result_t HttpSession::ParseHttpRequest()
 {
-    request_parser_result_t ret = ok;
-    int body_bytes_pending;
-
-    request = new HttpRequest();
-
-    int res = phr_parse_request(req->data,
-                                req->size,
-                                (const char**)&request->method,
-                                &request->method_len,
-                                (const char **)&request->path,
-                                &request->path_len,
-                                &request->minor_version,
-                                request->headers,
-                                &request->n_headers,
-                                0);
+    int res = phr_parse_request(
+        read_buf.data,
+        read_buf.size,
+        (const char**)&request.method,
+        &request.method_len,
+        (const char **)&request.path,
+        &request.path_len,
+        &request.minor_version,
+        request.headers,
+        &request.n_headers,
+        last_len
+    );
 
     if (res == -1) {
-        LOG_W("http: got an incomplete request")
-        ret = incomplete_request;
-        goto fin;
+        return invalid_request;
     } else if (res == -2) {
-        LOG_E("http: failed to parse request");
-        ret = invalid_request;
-        goto fin;
+        return incomplete_request;
     }
 
-    request->headers_len = res;
+    request.headers_len = res;
     ProcessHeaders();
 
-    body_bytes_pending = request->body_len - (req->size - res);
+    int body_bytes_pending = request.body_len - (read_buf.size - res);
     if (body_bytes_pending) {
         LOG_D("http: missing %d body bytes, waiting", body_bytes_pending);
-        ret = incomplete_request;
-        goto fin;
+        return incomplete_request;
     }
 
-    request->body = (char *)malloc(request->body_len);
-    memcpy(request->body, req->data + request->headers_len, request->body_len);
+    // TODO no need to allocate and copy
+    request.body = (char *)malloc(request.body_len);
+    memcpy(request.body, read_buf.data + request.headers_len, request.body_len);
 
-fin:
-    if (ret != ok) {
-        delete request;
-        request = NULL;
-    }
-
-    return ret;
+    return ok;
 }
 
 
@@ -418,8 +408,8 @@ fin:
 
 void HttpSession::ProcessHeaders()
 {
-    struct phr_header *headers = request->headers;
-    for (int i = 0; i < request->n_headers; ++i) {
+    struct phr_header *headers = request.headers;
+    for (int i = 0; i < request.n_headers; ++i) {
         LOG_D("http: %.*s: %.*s",
                 int(headers[i].name_len), headers[i].name,
                 int(headers[i].value_len), headers[i].value);
@@ -429,11 +419,11 @@ void HttpSession::ProcessHeaders()
                 headers[i].value_len > 0 &&
                 tolower(headers[i].value[0]) == 'k';
         } else if (CMP_HEADER("Content-Length")) {
-            request->body_len = strtol(headers[i].value, NULL, 10);
+            request.body_len = strtol(headers[i].value, NULL, 10);
         } else if (CMP_HEADER("Cookie")) {
-            request->ParseCookie(headers[i].value, headers[i].value_len);
+            request.ParseCookie(headers[i].value, headers[i].value_len);
         } else if (CMP_HEADER("If-Modified-Since")) {
-            request->if_modified_since = strndup(headers[i].value, headers[i].value_len);
+            request.if_modified_since = strndup(headers[i].value, headers[i].value_len);
         }
     }
 }
@@ -441,21 +431,10 @@ void HttpSession::ProcessHeaders()
 #undef CMP_HEADER
 
 
-void HttpSession::PrepareForNextRequest()
+void HttpSession::Reset()
 {
-    if (response) {
-        delete response;
-        response = NULL;
-    }
-
-    if (request) {
-        delete request;
-        request = NULL;
-    }
-
-    if (read_buf) {
-        delete read_buf;
-        read_buf = NULL;
-    }
+    response.Reset();
+    request.Reset();
+    read_buf.Reset();
 }
 

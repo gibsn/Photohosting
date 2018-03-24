@@ -68,6 +68,11 @@ ByteArray::ByteArray(const char *_data, int _size)
     }
 }
 
+ByteArray::~ByteArray()
+{
+    free(data);
+}
+
 
 void ByteArray::Append(const ByteArray *arr)
 {
@@ -80,6 +85,13 @@ void ByteArray::Append(const ByteArray *arr)
         memcpy(data + size, arr->data, arr->size);
         size += arr->size;
     }
+}
+
+
+void ByteArray::Reset()
+{
+    this->~ByteArray();
+    memset(this, 0, sizeof(*this));
 }
 
 

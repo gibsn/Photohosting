@@ -15,9 +15,8 @@ TcpSession::TcpSession(
         int _fd,
         sue_fd_handler_cb_t fd_cb,
         sue_tout_handler_cb_t tout_cb)
-  : active(true),
-    s_addr(NULL),
-    session_driver(NULL),
+  : s_addr(NULL),
+    app_layer_session(NULL),
     tcp_server(_tcp_server),
     read_buf_len(0),
     write_buf(NULL),
@@ -38,9 +37,9 @@ TcpSession::TcpSession(
 }
 
 
-bool TcpSession::ProcessRequest()
+void TcpSession::ProcessRequest()
 {
-    return session_driver->ProcessRequest();
+    app_layer_session->ProcessRequest();
 }
 
 
@@ -52,24 +51,19 @@ void TcpSession::Close()
         shutdown(fd_h.fd, SHUT_RDWR);
         close(fd_h.fd);
     }
-
-    active = false;
 }
 
 
 TcpSession::~TcpSession()
 {
-    if (active) this->Close();
-    session_driver->Close();
-
-    delete session_driver;
+    Close();
 
     free(write_buf);
     free(s_addr);
 }
 
 
-void TcpSession::TruncateReadBuf()
+void TcpSession::ResetReadBuf()
 {
     read_buf_len = 0;
 }
@@ -93,7 +87,7 @@ void TcpSession::ResetIdleTout(sue_event_selector *selector)
 }
 
 
-void TcpSession::TruncateWriteBuf()
+void TcpSession::ResetWriteBuf()
 {
     free(write_buf);
     write_buf = NULL;
@@ -137,7 +131,7 @@ bool TcpSession::Flush()
     write_buf_offset += n;
 
     if (write_buf_offset == write_buf_len) {
-        TruncateWriteBuf();
+        ResetWriteBuf();
         fd_h.want_write = 0;
     }
 
@@ -148,7 +142,7 @@ bool TcpSession::Flush()
 ByteArray *TcpSession::GetReadBuf()
 {
     ByteArray *buf_copy = new ByteArray((char *)read_buf, read_buf_len);
-    TruncateReadBuf();
+    ResetReadBuf();
     return buf_copy;
 }
 
