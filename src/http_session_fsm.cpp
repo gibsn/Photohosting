@@ -8,7 +8,6 @@
 
 
 typedef enum {
-    ok = 0,
     invalid_request = -1,
     incomplete_headers = -2,
 } pico_request_parser_result_t;
@@ -22,9 +21,14 @@ void HttpSession::ProcessStateIdle()
 
 void HttpSession::ProcessStateWaitingForHeaders()
 {
+    // pico does no allocations itself so underlying headers buf should be
+    // saved since read_buf is truncated
+    char *buf = strndup(read_buf.data, read_buf.size);
+    uint32_t buf_len = read_buf.size;
+
     int res = phr_parse_request(
-        read_buf.data,
-        read_buf.size,
+        buf,
+        buf_len,
         (const char**)&request.method,
         &request.method_len,
         (const char **)&request.path,
@@ -32,27 +36,37 @@ void HttpSession::ProcessStateWaitingForHeaders()
         &request.minor_version,
         request.headers,
         &request.n_headers,
-        0
+        last_headers_len
     );
 
-    if (res == invalid_request) {
-        LOG_D("http: invalid headers");
-        InitHttpResponse(http_bad_request);
-        SetWantToClose();
-        state = state_responding;
-        return;
-    } else if (res == incomplete_headers) {
-        LOG_D("http: got incomplete headers");
-        request.Reset();
-        last_headers_len = read_buf.size;
-        should_wait_for_more_data = true;
+    if (res > 0) {
+        request.headers_raw = buf;
+        request.headers_len = res;
+        read_buf.Truncate(request.headers_len);
+
+        state = state_processing_headers;
+
         return;
     }
 
-    request.headers_len = res;
-    read_buf.Truncate(request.headers_len);
+    free(buf);
 
-    state = state_processing_headers;
+    if (res == incomplete_headers) {
+        LOG_D("http: got incomplete headers");
+
+        request.Reset();
+        last_headers_len = read_buf.size;
+        should_wait_for_more_data = true;
+
+        return;
+    }
+
+    LOG_D("http: invalid headers");
+
+    InitHttpResponse(http_bad_request);
+    SetWantToClose();
+
+    state = state_responding;
 }
 
 
@@ -60,11 +74,15 @@ void HttpSession::ProcessStateWaitingForHeaders()
 
 void HttpSession::ProcessStateProcessingHeaders()
 {
+    LOG_D("http: Method: %.*s", int(request.method_len), request.method);
+    LOG_D("http: Path: %.*s", int(request.path_len), request.path);
+
     struct phr_header *headers = request.headers;
     for (int i = 0; i < request.n_headers; ++i) {
         LOG_D("http: %.*s: %.*s",
                 int(headers[i].name_len), headers[i].name,
-                int(headers[i].value_len), headers[i].value);
+                int(headers[i].value_len), headers[i].value
+        );
 
         if (CMP_HEADER("Connection")) {
             keep_alive =
@@ -96,7 +114,9 @@ void HttpSession::ProcessStateWaitingForBody()
 
     // TODO no need to allocate and copy
     request.body = (char *)malloc(request.body_len);
-    memcpy(request.body, read_buf.data + request.headers_len, request.body_len);
+    memcpy(request.body, read_buf.data, request.body_len);
+
+    read_buf.Truncate(request.body_len);
 
     state = state_processing_request;
 }
@@ -104,7 +124,7 @@ void HttpSession::ProcessStateWaitingForBody()
 
 #define METHOD_IS(str)\
     request.method_len == strlen(str) && \
-    !strncmp(request.method, str, request.method_len)
+    !strncmp(request.method, str, MIN(request.method_len, strlen(str)))
 
 void HttpSession::ProcessStateProcessingRequest()
 {

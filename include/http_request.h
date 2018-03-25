@@ -17,8 +17,9 @@ struct HttpRequest {
 
     int minor_version;
 
-    struct phr_header headers[MAX_HTTP_HEADERS];
+    char *headers_raw;
     int headers_len;
+    struct phr_header headers[MAX_HTTP_HEADERS];
     size_t n_headers;
 
     char *sid;

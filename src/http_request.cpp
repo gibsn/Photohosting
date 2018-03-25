@@ -13,6 +13,7 @@ HttpRequest::HttpRequest()
     method_len(0),
     path(NULL),
     path_len(0),
+    headers_raw(NULL),
     headers_len(0),
     n_headers(MAX_HTTP_HEADERS),
     sid(NULL),
@@ -25,6 +26,7 @@ HttpRequest::HttpRequest()
 
 HttpRequest::~HttpRequest()
 {
+    free(headers_raw);
     free(sid);
     free(if_modified_since);
     free(body);

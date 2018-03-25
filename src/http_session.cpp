@@ -121,7 +121,6 @@ void HttpSession::ProcessRequest()
 
 
 #define LOCATION_IS(str) !strcmp(path, str)
-#define LOCATION_STARTS_WITH(str) path == strstr(path, str)
 
 void HttpSession::ProcessStatic(const char *path)
 {
@@ -163,6 +162,7 @@ void HttpSession::ProcessStatic(const char *path)
     delete file;
 }
 
+#define LOCATION_STARTS_WITH(str) path == strstr(path, str)
 
 void HttpSession::ProcessGetRequest()
 {
@@ -179,6 +179,8 @@ void HttpSession::ProcessGetRequest()
 
     free(path);
 }
+
+#undef LOCATION_STARTS_WITH
 
 
 void HttpSession::ProcessPhotosUpload()
@@ -311,7 +313,6 @@ void HttpSession::ProcessPostRequest()
 }
 
 #undef LOCATION_IS
-#undef LOCATION_STARTS_WITH
 
 
 char *HttpSession::UploadFile(const char *user)
