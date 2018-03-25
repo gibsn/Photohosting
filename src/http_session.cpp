@@ -22,9 +22,11 @@
 
 
 HttpSession::HttpSession(TcpSession *_tcp_session, HttpServer *_http_server)
-    : http_server(_http_server),
+    : state(state_idle),
+    should_wait_for_more_data(true),
+    http_server(_http_server),
     photohosting(_http_server->GetPhotohosting()),
-    last_len(0),
+    last_headers_len(0),
     tcp_session(_tcp_session),
     keep_alive(true)
 {
@@ -48,7 +50,8 @@ void HttpSession::Close()
 void HttpSession::InitHttpResponse(http_status_t status)
 {
     response.code = status;
-    response.minor_version = request.minor_version;
+
+    response.minor_version = 1;
     response.keep_alive = keep_alive;
 
     response.AddStatusLine();
@@ -73,55 +76,48 @@ fin:
 }
 
 
-#define METHOD_IS(str)\
-    request.method_len == strlen(str) && \
-    !strncmp(request.method, str, request.method_len)
-
 void HttpSession::ProcessRequest()
 {
     ByteArray *tcp_read_buf = tcp_session->GetReadBuf();
-
     read_buf.Append(tcp_read_buf);
     delete tcp_read_buf;
 
-    // hexdump((uint8_t *)read_buf.data, read_buf.size);
+    should_wait_for_more_data = false;
 
-    switch(ParseHttpRequest()) {
-    case incomplete_request:
-        LOG_W("http: got an incomplete request")
-        last_len = read_buf.size;
-        request.Reset();
-        return;
-    case invalid_request:
-        LOG_E("http: failed to parse request");
-        InitHttpResponse(http_bad_request);
-        tcp_session->SetWantToClose(true);
-        goto fin;
-    case ok:
-        break;
+    if (log_level >= LOG_DEBUG) {
+        hexdump((uint8_t *)read_buf.data, read_buf.size);
     }
 
-    if (!ValidateLocation(strndup(request.path, request.path_len))) {
-        InitHttpResponse(http_bad_request);
-    } else if (METHOD_IS("GET")) {
-        ProcessGetRequest();
-    } else if (METHOD_IS("POST")) {
-        ProcessPostRequest();
-    } else {
-        InitHttpResponse(http_not_found);
-    }
+    while (true) {
+        switch(state) {
+        case(state_idle):
+            ProcessStateIdle();
+            break;
+        case(state_waiting_for_headers):
+            ProcessStateWaitingForHeaders();
+            break;
+        case(state_processing_headers):
+            ProcessStateProcessingHeaders();
+            break;
+        case(state_waiting_for_body):
+            ProcessStateWaitingForBody();
+            break;
+        case(state_processing_request):
+            ProcessStateProcessingRequest();
+            break;
+        case(state_responding):
+            ProcessStateResponding();
+            break;
+        case(state_shutting_down):
+            ProcessStateShuttingDown();
+            break;
+        }
 
-    if (!keep_alive) {
-        tcp_session->SetWantToClose(true);
+        if (should_wait_for_more_data) {
+            return;
+        }
     }
-
-fin:
-    Respond();
-    Reset();
 }
-
-#undef LOCATION_CONTAINS
-#undef METHOD_IS
 
 
 #define LOCATION_IS(str) !strcmp(path, str)
@@ -355,6 +351,8 @@ ByteArray *HttpSession::GetFileFromRequest() const
 
 void HttpSession::Respond()
 {
+    LOG_D("http: responding %d to %s", response.code, s_addr);
+
     if (!response.body) {
         response.AddDefaultBodies();
     }
@@ -364,77 +362,3 @@ void HttpSession::Respond()
 
     delete r;
 }
-
-
-request_parser_result_t HttpSession::ParseHttpRequest()
-{
-    int res = phr_parse_request(
-        read_buf.data,
-        read_buf.size,
-        (const char**)&request.method,
-        &request.method_len,
-        (const char **)&request.path,
-        &request.path_len,
-        &request.minor_version,
-        request.headers,
-        &request.n_headers,
-        last_len
-    );
-
-    if (res == -1) {
-        return invalid_request;
-    } else if (res == -2) {
-        return incomplete_request;
-    }
-
-    request.headers_len = res;
-    ProcessHeaders();
-
-    int body_bytes_pending = request.body_len - (read_buf.size - res);
-    if (body_bytes_pending) {
-        LOG_D("http: missing %d body bytes, waiting", body_bytes_pending);
-        return incomplete_request;
-    }
-
-    // TODO no need to allocate and copy
-    request.body = (char *)malloc(request.body_len);
-    memcpy(request.body, read_buf.data + request.headers_len, request.body_len);
-
-    return ok;
-}
-
-
-#define CMP_HEADER(str) !memcmp(headers[i].name, str, headers[i].name_len)
-
-void HttpSession::ProcessHeaders()
-{
-    struct phr_header *headers = request.headers;
-    for (int i = 0; i < request.n_headers; ++i) {
-        LOG_D("http: %.*s: %.*s",
-                int(headers[i].name_len), headers[i].name,
-                int(headers[i].value_len), headers[i].value);
-
-        if (CMP_HEADER("Connection")) {
-            keep_alive =
-                headers[i].value_len > 0 &&
-                tolower(headers[i].value[0]) == 'k';
-        } else if (CMP_HEADER("Content-Length")) {
-            request.body_len = strtol(headers[i].value, NULL, 10);
-        } else if (CMP_HEADER("Cookie")) {
-            request.ParseCookie(headers[i].value, headers[i].value_len);
-        } else if (CMP_HEADER("If-Modified-Since")) {
-            request.if_modified_since = strndup(headers[i].value, headers[i].value_len);
-        }
-    }
-}
-
-#undef CMP_HEADER
-
-
-void HttpSession::Reset()
-{
-    response.Reset();
-    request.Reset();
-    read_buf.Reset();
-}
-

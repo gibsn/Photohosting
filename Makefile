@@ -18,6 +18,7 @@ STANDALONE_SRC_MODULES = \
 	http_response.cpp    \
 	http_server.cpp      \
 	http_session.cpp     \
+	http_session_fsm.cpp \
 	log.cpp              \
 	standalone_main.cpp  \
 	multipart.cpp        \

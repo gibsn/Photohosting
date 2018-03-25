@@ -12,21 +12,26 @@ class Photohosting;
 class HttpServer;
 class TcpSession;
 
-typedef enum {
-    ok = 0,
-    invalid_request = -1,
-    incomplete_request = -2,
-} request_parser_result_t;
-
 
 class HttpSession: public AppLayerDriver {
+    enum {
+        state_idle = 0,
+        state_waiting_for_headers,
+        state_processing_headers,
+        state_waiting_for_body,
+        state_processing_request,
+        state_responding,
+        state_shutting_down,
+    } state;
+    bool should_wait_for_more_data;
+
     HttpServer *http_server;
     Photohosting *photohosting;
 
     char *s_addr;
 
     ByteArray read_buf;
-    uint32_t last_len;
+    uint32_t last_headers_len;
 
     TcpSession *tcp_session;
 
@@ -35,9 +40,16 @@ class HttpSession: public AppLayerDriver {
 
     bool keep_alive;
 
-    request_parser_result_t ParseHttpRequest();
+    // Finite state machine
+    void ProcessStateIdle();
+    void ProcessStateWaitingForHeaders();
+    void ProcessStateProcessingHeaders();
+    void ProcessStateWaitingForBody();
+    void ProcessStateProcessingRequest();
+    void ProcessStateResponding();
+    void ProcessStateShuttingDown();
+
     void ProcessHeaders();
-    void PrepareForNextRequest();
 
     bool ValidateLocation(char *path);
 
@@ -48,6 +60,7 @@ class HttpSession: public AppLayerDriver {
     void Respond();
     void Reset();
 
+    // API
     void ProcessLogin();
     void ProcessLogout();
 
@@ -57,6 +70,8 @@ class HttpSession: public AppLayerDriver {
     char *UploadFile(const char *);
 
     ByteArray *GetFileFromRequest() const;
+
+    void SetWantToClose() { keep_alive = false; }
 
 public:
     HttpSession(TcpSession *, HttpServer *);

@@ -139,6 +139,13 @@ bool TcpSession::Flush()
 }
 
 
+void TcpSession::Shutdown()
+{
+    shutdown(fd_h.fd, SHUT_RD);
+    want_to_close = true;
+}
+
+
 ByteArray *TcpSession::GetReadBuf()
 {
     ByteArray *buf_copy = new ByteArray((char *)read_buf, read_buf_len);
@@ -147,7 +154,6 @@ ByteArray *TcpSession::GetReadBuf()
 }
 
 
-// TODO why not by reference and copy?
 void TcpSession::Send(ByteArray *buf)
 {
     write_buf_len = buf->size;

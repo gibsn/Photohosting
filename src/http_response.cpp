@@ -115,8 +115,7 @@ void HttpResponse::AddStatusLine()
 
     // +1 because snprintf wants to write \0
     response = (char *)realloc(response, len + 1);
-    int ret =
-        snprintf(response, len + 1, "HTTP/1.%d %s\r\n", minor_version, s_code);
+    int ret = snprintf(response, len + 1, "HTTP/1.%d %s\r\n", minor_version, s_code);
     assert(ret);
 
     response_len += len;

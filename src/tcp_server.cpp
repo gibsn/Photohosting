@@ -140,7 +140,7 @@ void TcpServer::FdHandler(TcpSession *session, int r, int w, int x)
     if (x) {
     }
 
-    if (session->GetWantToClose()) {
+    if (session->ShouldClose()) {
         CloseSession(session->GetAppLayerSession());
         CloseTcpSession(session);
     }
@@ -172,7 +172,7 @@ void TcpServer::ProcessRead(TcpSession *session)
         LOG_I("tcp: client from %s has closed the connection [fd=%d]",
             session->GetSAddr(), session->GetFd());
 
-        session->SetWantToClose(true);
+        session->Shutdown();
         return;
     }
 
@@ -185,7 +185,7 @@ void TcpServer::ProcessWrite(TcpSession *session)
     LOG_D("tcp: sending data to %s [fd=%d]", session->GetSAddr(), session->GetFd());
 
     if (!session->Flush()) {
-        session->SetWantToClose(true);
+        session->Shutdown();
         return;
     }
 

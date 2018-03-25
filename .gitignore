@@ -15,6 +15,6 @@ users
 
 public_html/css
 
-config_local.ini
+*.ini.local
 
 externals/WebAlbumCreator

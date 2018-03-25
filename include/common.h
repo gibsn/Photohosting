@@ -17,6 +17,7 @@ struct ByteArray
     ~ByteArray();
 
     void Append(const ByteArray *other);
+    void Truncate(uint32_t n);
     void Reset();
 };
 

@@ -88,6 +88,20 @@ void ByteArray::Append(const ByteArray *arr)
 }
 
 
+// Truncate discards all but the first n unread bytes from the buffer but
+// continues to use the same allocated storage.
+void ByteArray::Truncate(uint32_t n)
+{
+    if (!data) {
+        return;
+    }
+
+    n = MIN(n, size);
+    memmove(data, data + n, size - n);
+    size -= n;
+}
+
+
 void ByteArray::Reset()
 {
     this->~ByteArray();

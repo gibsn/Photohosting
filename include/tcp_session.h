@@ -31,6 +31,7 @@ class TcpSession
     char read_buf[READ_BUF_SIZE];
     int read_buf_len;
 
+    // TODO change to bytearray
     char *write_buf;
     int write_buf_len;
     int write_buf_offset;
@@ -53,21 +54,21 @@ public:
 
     bool ReadToBuf();
     bool Flush();
+    bool ShouldClose() const { return want_to_close && write_buf_len == 0; }
 
     void ProcessRequest();
+    void Shutdown();
     void Close();
 
     TcpServer *GetTcpServer() { return tcp_server; }
     int GetFd() const { return fd_h.fd; }
     const char *GetSAddr() const { return s_addr; }
     ByteArray *GetReadBuf();
-    bool GetWantToClose() const { return want_to_close; }
     AppLayerDriver *GetAppLayerSession() { return app_layer_session; }
 
     sue_fd_handler *GetFdHandler() { return &fd_h; }
     sue_timeout_handler *GetToutHandler() { return &tout_h; }
 
-    void SetWantToClose(bool b) { want_to_close = b; }
     void SetAppLayerSession(AppLayerDriver *session) { app_layer_session = session; }
 
     void InitFdHandler(sue_event_selector *selector);
