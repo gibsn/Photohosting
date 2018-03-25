@@ -41,6 +41,7 @@ class HttpSession: public AppLayerDriver {
     bool keep_alive;
 
     // Finite state machine
+    void Routine();
     void ProcessStateIdle();
     void ProcessStateWaitingForHeaders();
     void ProcessStateProcessingHeaders();
@@ -77,7 +78,9 @@ public:
     HttpSession(TcpSession *, HttpServer *);
     ~HttpSession();
 
-    virtual void ProcessRequest();
+    virtual void OnRead();
+    virtual void OnWrite();
+
     void Close();
 };
 

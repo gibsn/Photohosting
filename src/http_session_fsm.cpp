@@ -13,6 +13,40 @@ typedef enum {
 } pico_request_parser_result_t;
 
 
+void HttpSession::Routine()
+{
+    while (true) {
+        switch(state) {
+        case(state_idle):
+            ProcessStateIdle();
+            break;
+        case(state_waiting_for_headers):
+            ProcessStateWaitingForHeaders();
+            break;
+        case(state_processing_headers):
+            ProcessStateProcessingHeaders();
+            break;
+        case(state_waiting_for_body):
+            ProcessStateWaitingForBody();
+            break;
+        case(state_processing_request):
+            ProcessStateProcessingRequest();
+            break;
+        case(state_responding):
+            ProcessStateResponding();
+            break;
+        case(state_shutting_down):
+            ProcessStateShuttingDown();
+            break;
+        }
+
+        if (should_wait_for_more_data) {
+            return;
+        }
+    }
+}
+
+
 void HttpSession::ProcessStateIdle()
 {
     state = state_waiting_for_headers;

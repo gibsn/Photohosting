@@ -76,7 +76,7 @@ fin:
 }
 
 
-void HttpSession::ProcessRequest()
+void HttpSession::OnRead()
 {
     ByteArray *tcp_read_buf = tcp_session->GetReadBuf();
     read_buf.Append(tcp_read_buf);
@@ -88,35 +88,12 @@ void HttpSession::ProcessRequest()
         hexdump((uint8_t *)read_buf.data, read_buf.size);
     }
 
-    while (true) {
-        switch(state) {
-        case(state_idle):
-            ProcessStateIdle();
-            break;
-        case(state_waiting_for_headers):
-            ProcessStateWaitingForHeaders();
-            break;
-        case(state_processing_headers):
-            ProcessStateProcessingHeaders();
-            break;
-        case(state_waiting_for_body):
-            ProcessStateWaitingForBody();
-            break;
-        case(state_processing_request):
-            ProcessStateProcessingRequest();
-            break;
-        case(state_responding):
-            ProcessStateResponding();
-            break;
-        case(state_shutting_down):
-            ProcessStateShuttingDown();
-            break;
-        }
+    return Routine();
+}
 
-        if (should_wait_for_more_data) {
-            return;
-        }
-    }
+
+void HttpSession::OnWrite()
+{
 }
 
 

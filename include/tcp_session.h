@@ -56,7 +56,9 @@ public:
     bool Flush();
     bool ShouldClose() const { return want_to_close && write_buf_len == 0; }
 
-    void ProcessRequest();
+    void OnRead();
+    void OnWrite();
+
     void Shutdown();
     void Close();
 

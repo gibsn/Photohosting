@@ -129,14 +129,14 @@ void TcpServer::FdHandlerCb(sue_fd_handler *fd_h, int r, int w, int x)
 void TcpServer::FdHandler(TcpSession *session, int r, int w, int x)
 {
     if (r) {
-        ProcessRead(session);
+        session->ResetIdleTout(&selector);
+        session->OnRead();
     }
 
     if (w) {
-        ProcessWrite(session);
+        session->OnWrite();
     }
 
-    // TODO wtf is x?
     if (x) {
     }
 
@@ -160,36 +160,6 @@ void TcpServer::ToutHandler(TcpSession *session)
 
     CloseSession(session->GetAppLayerSession());
     CloseTcpSession(session);
-}
-
-void TcpServer::ProcessRead(TcpSession *session)
-{
-    session->ResetIdleTout(&selector);
-
-    LOG_D("tcp: got data from %s [fd=%d]", session->GetSAddr(), session->GetFd());
-
-    if (!session->ReadToBuf()) {
-        LOG_I("tcp: client from %s has closed the connection [fd=%d]",
-            session->GetSAddr(), session->GetFd());
-
-        session->Shutdown();
-        return;
-    }
-
-    session->ProcessRequest();
-}
-
-
-void TcpServer::ProcessWrite(TcpSession *session)
-{
-    LOG_D("tcp: sending data to %s [fd=%d]", session->GetSAddr(), session->GetFd());
-
-    if (!session->Flush()) {
-        session->Shutdown();
-        return;
-    }
-
-    LOG_D("tcp: successfully sent data to %s [fd=%d]", session->GetSAddr(), session->GetFd());
 }
 
 
@@ -317,7 +287,9 @@ void TcpServer::Wait()
 
 bool TcpServer::ListenAndServe()
 {
-    if (!Listen()) return false;
+    if (!Listen()) {
+        return false;
+    }
 
     if (is_slave) {
         Serve();

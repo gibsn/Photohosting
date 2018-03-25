@@ -6,7 +6,8 @@ class AppLayerDriver
 public:
     virtual ~AppLayerDriver() {};
 
-    virtual void ProcessRequest() = 0;
+    virtual void OnRead() = 0;
+    virtual void OnWrite() = 0;
 };
 
 

@@ -37,9 +37,28 @@ TcpSession::TcpSession(
 }
 
 
-void TcpSession::ProcessRequest()
+void TcpSession::OnRead()
 {
-    app_layer_session->ProcessRequest();
+    LOG_D("tcp: got data from %s [fd=%d]", s_addr, fd_h.fd);
+
+    if (!ReadToBuf()) {
+        LOG_I("tcp: client from %s has closed the connection [fd=%d]", s_addr, fd_h.fd);
+        return Shutdown();
+    }
+
+    app_layer_session->OnRead();
+}
+
+
+void TcpSession::OnWrite()
+{
+    if (!Flush()) {
+        return Shutdown();
+    }
+
+    LOG_D("tcp: successfully sent data to %s [fd=%d]", s_addr, fd_h.fd);
+
+    app_layer_session->OnWrite();
 }
 
 
