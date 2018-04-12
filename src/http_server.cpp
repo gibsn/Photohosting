@@ -93,14 +93,16 @@ int HttpServer::GetFileStat(const char *path, struct stat *_stat) const
 
 bool HttpServer::Init()
 {
-    if (!TcpServer::Init()) return false;
+    if (!TcpServer::Init()) {
+        return false;
+    }
 
     return true;
 }
 
 
-HttpServer::HttpServer(const Config &cfg, Photohosting *_photohosting)
-    : TcpServer(cfg),
+HttpServer::HttpServer(const Config &cfg, sue_event_selector &selector, Photohosting *_photohosting)
+    : TcpServer(cfg, selector),
     path_to_static_len(0),
     photohosting(_photohosting)
 {

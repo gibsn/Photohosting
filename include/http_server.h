@@ -25,7 +25,7 @@ class HttpServer: public TcpServer {
     void CloseSession(AppLayerDriver *session);
 
 public:
-    HttpServer(const Config &cfg, Photohosting *photohosting);
+    HttpServer(const Config &cfg, sue_event_selector &selector, Photohosting *photohosting);
     virtual ~HttpServer();
 
     virtual bool Init();

@@ -30,14 +30,13 @@ class TcpServer {
     Worker *workers;
     bool is_slave;
 
-    struct sue_event_selector selector;
+    struct sue_event_selector &selector;
     struct sue_fd_handler listen_fd_h;
 
     int n_sessions;
     TcpSession **sessions;
 
-    bool Listen();
-    void Serve();
+    bool SpawnWorkers();
     void Wait();
 
     static void ListenFdHandlerCb(sue_fd_handler *fd_h, int r, int w, int x);
@@ -59,7 +58,7 @@ class TcpServer {
 
 public:
     TcpServer();
-    TcpServer(const Config &cfg);
+    TcpServer(const Config &cfg, sue_event_selector &selector);
     virtual ~TcpServer();
 
     const char *GetAddr() const { return addr; }
@@ -70,7 +69,6 @@ public:
     void SetWorkersCount(int n) { n_workers = n; }
 
     virtual bool Init();
-    virtual bool ListenAndServe();
 };
 
 #endif

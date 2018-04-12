@@ -16,12 +16,12 @@
 #include "log.h"
 
 
-TcpServer::TcpServer(const Config &cfg)
+TcpServer::TcpServer(const Config &cfg, sue_event_selector &s)
     : workers(NULL),
+    selector(s),
     n_sessions(0),
     sessions(NULL)
 {
-    sue_event_selector_init(&selector);
     memset(&listen_fd_h, 0, sizeof(listen_fd_h));
 
     addr = strdup(cfg.addr);
@@ -81,39 +81,51 @@ bool TcpServer::Init()
 
     sue_event_selector_register_fd_handler(&selector, &listen_fd_h);
 
-    return true;
-}
-
-
-bool TcpServer::Listen()
-{
     if (listen(listen_fd_h.fd, 5)) {
         LOG_E("tcp: could not start listening: %s", strerror(errno));
         return false;
     }
 
-    LOG_I("tcp: listening on %s:%d", addr, port);
+    if (n_workers) {
+        if (!SpawnWorkers()) {
+            return false;
+        }
 
+        if (is_slave) {
+            LOG_I("tcp: listening on %s:%d", addr, port);
+            return true;
+        }
+
+        close(listen_fd_h.fd);
+        Wait();
+    }
+
+    return true;
+}
+
+
+bool TcpServer::SpawnWorkers()
+{
     is_slave = false;
-    int pid;
-    for (int i = 0; i < n_workers; ++i) {
-        pid = fork();
 
-        srand(time(NULL) ^ (getpid() << 16));
+    for (int i = 0; i < n_workers; ++i) {
+        int pid = fork();
 
         if (pid == -1) {
             LOG_E("tcp: could not fork a worker: %s", strerror(errno));
             return false;
         }
 
-        if (pid != 0) {
-            workers[i].pid = pid;
-            LOG_I("tcp: forked a worker with PID %d", pid);
-        } else {
-            my_pid = getpid();
+        if (!pid) {
             is_slave = true;
-            break;
+            my_pid = getpid();
+            srand(time(NULL) ^ (my_pid << 16));
+
+            return true;
         }
+
+        workers[i].pid = pid;
+        LOG_I("tcp: forked a worker with PID %d", pid);
     }
 
     return true;
@@ -153,6 +165,7 @@ void TcpServer::ToutHandlerCb(sue_timeout_handler *tout_h)
     server->ToutHandler(session);
 }
 
+
 void TcpServer::ToutHandler(TcpSession *session)
 {
     LOG_I("tcp: closing idle connection from %s [fd=%d]",
@@ -160,12 +173,6 @@ void TcpServer::ToutHandler(TcpSession *session)
 
     CloseSession(session->GetAppLayerSession());
     CloseTcpSession(session);
-}
-
-
-void TcpServer::Serve()
-{
-    sue_event_selector_go(&selector);
 }
 
 
@@ -282,21 +289,4 @@ void TcpServer::Wait()
             LOG_E("tcp: worker %d has exited with error", pid);
         }
     }
-}
-
-
-bool TcpServer::ListenAndServe()
-{
-    if (!Listen()) {
-        return false;
-    }
-
-    if (is_slave) {
-        Serve();
-    } else {
-        close(listen_fd_h.fd);
-        Wait();
-    }
-
-    return true;
 }
