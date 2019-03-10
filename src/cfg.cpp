@@ -9,12 +9,13 @@
 #include "log.h"
 
 
+#define CFG_PATH_TO_CFG_DEFAULT "./photohosting.ini"
+
 #define CFG_INIT CFG_GEN
 #define CFG_ENTRY(VAR, SECTION, NAME, TYPE, DEF_VALUE) \
     VAR = CFG_##TYPE##_DEF_VALUE;
 
 Config::Config()
-    : path_to_cfg(NULL)
 {
     CFG_INIT
 }
@@ -29,8 +30,6 @@ Config::Config()
 
 Config::~Config()
 {
-    if (path_to_cfg) free(path_to_cfg);
-
     CFG_FREE
 }
 
@@ -42,8 +41,17 @@ Config::~Config()
 #define CFG_ENTRY(VAR, SECTION, NAME, TYPE, DEF_VALUE) \
         CFG_##TYPE##_PARSE(dict, VAR, SECTION, NAME);
 
-bool Config::Init(const char *path_to_cfg)
+bool Config::Parse(const char *path_to_cfg)
 {
+    if (!path_to_cfg) {
+        fprintf(stderr,
+            "You have not specified path to config, "
+            "using " CFG_PATH_TO_CFG_DEFAULT " by default\n"
+        );
+
+        path_to_cfg = CFG_PATH_TO_CFG_DEFAULT;
+    }
+
     dictionary *dict = iniparser_load(path_to_cfg);
     if (!dict) {
         fprintf(stderr, "Failed to initialise config\n");
@@ -53,6 +61,9 @@ bool Config::Init(const char *path_to_cfg)
     CFG_PARSE_INI
 
     iniparser_freedict(dict);
+
+    PrintDefaults();
+
     return true;
 }
 
@@ -60,7 +71,7 @@ bool Config::Init(const char *path_to_cfg)
 #undef CFG_PARSE_INI
 
 
-#define CFG_CHECK CFG_GEN
+#define CFG_PRINT_DEFAULTS CFG_GEN
 #define CFG_ENTRY(VAR, SECTION, NAME, TYPE, DEF_VALUE) \
     if (VAR == CFG_##TYPE##_DEF_VALUE) {               \
         fprintf(stderr,                                \
@@ -69,9 +80,9 @@ bool Config::Init(const char *path_to_cfg)
         CFG_##TYPE##_ASSIGN(VAR, DEF_VALUE);           \
     }
 
-void Config::Check()
+void Config::PrintDefaults()
 {
-    CFG_CHECK
+    CFG_PRINT_DEFAULTS
 }
 
 #undef CFG_ENTRY
