@@ -59,8 +59,10 @@ struct Config
     Config();
     ~Config();
 
-    bool Init(const char *path_to_cfg);
-    void Check();
+    bool Parse(const char *path_to_cfg);
+
+private:
+    void PrintDefaults();
 };
 
 

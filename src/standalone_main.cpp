@@ -17,11 +17,9 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    if (!cfg.Init(cfg.path_to_cfg)) {
+    if (!cfg.Parse(cfg.path_to_cfg)) {
         return EXIT_FAILURE;
     }
-
-    cfg.Check();
 
     init_logger(cfg);
 
