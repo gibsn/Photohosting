@@ -38,8 +38,9 @@
     CFG_ENTRY(path_to_store,     "photohosting", "path_to_store",     STRING, ".")        \
     CFG_ENTRY(path_to_tmp_files, "photohosting", "path_to_tmp_files", STRING, ".")        \
                                                                                           \
-    CFG_ENTRY(path_to_tokens,    "auth",         "path_to_tokens",    STRING, ".")        \
-    CFG_ENTRY(path_to_pwd,       "auth",         "users",             STRING, "./users")
+    CFG_ENTRY(path_to_tokens,    "auth",         "path_to_tokens",    STRING, "./tokens") \
+    CFG_ENTRY(path_to_pwd,       "auth",         "users",             STRING, "./users")  \
+    CFG_ENTRY(path_to_grants,    "auth",         "path_to_grants",    STRING, "./grants")
 
 
 #define CFG_ENTRY(VAR, SECTION, NAME, TYPE, DEF_VALUE) \

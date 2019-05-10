@@ -2,15 +2,58 @@
 #define PHOTOHOSTING_H_SENTRY
 
 
+#include "grants.h"
+
+
 struct WebAlbumParams;
 struct Config;
 struct ByteArray;
 class AuthDriver;
 
 
+class PhotohostingGrantsBuilder: public GrantsBuilder {
+    char *album;
+    char *photo;
+
+
+    virtual char *GrantParamsToPath() const;
+
+public:
+    PhotohostingGrantsBuilder(const char *path_to_grants);
+    ~PhotohostingGrantsBuilder();
+
+    void SetAlbum(const char *_album) {
+        free(album);
+        album = strdup(_album);
+    }
+    void ResetAlbum() {
+        free(album);
+        album = NULL;
+    }
+    void SetPhoto(const char *_photo) {
+        free(photo);
+        photo = strdup(_photo);
+    }
+    void ResetPhoto() {
+        free(photo);
+        photo = NULL;
+    }
+};
+
+class PhotohostingGrants: public Grants{
+
+public:
+    PhotohostingGrants(const char *path_to_grants);
+    ~PhotohostingGrants();
+
+    void Init() const;
+    PhotohostingGrantsBuilder *Builder();
+};
+
 class Photohosting
 {
     AuthDriver *auth;
+    PhotohostingGrants *grants;
 
     char *path_to_store;
     char *path_to_users;

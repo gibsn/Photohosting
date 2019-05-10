@@ -18,6 +18,13 @@ public:
     virtual void SetErrMsg(const char *t) { if (t) err_msg = strdup(t); }
 };
 
+class InitEx: public Exception {
+
+public:
+    InitEx() {};
+    InitEx(const char *t): Exception(t) {};
+};
+
 class SystemEx: public Exception {
 
 public:
@@ -41,6 +48,24 @@ class StatEx: public SystemEx {
 
 public:
     StatEx(const char *t): SystemEx(t) {}
+};
+
+class CreatEx: public SystemEx {
+
+public:
+    CreatEx(const char *t): SystemEx(t) {}
+};
+
+class RmEx: public SystemEx {
+
+public:
+    RmEx(const char *t): SystemEx(t) {}
+};
+
+class GrantEx: public SystemEx {
+
+public:
+    GrantEx(const char *t): SystemEx(t) {}
 };
 
 class UnknownWriteError: public SystemEx {};
