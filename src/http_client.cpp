@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "tcp_client.h"
 
@@ -44,11 +45,18 @@ void HttpClient::Close(ApplicationLevelBridge *h)
 
 void HttpClient::Dial(const char *addr)
 {
-    // split addr to host and port
-    // resolve domain name
-    char *host;
-    uint16_t port;
+    char *host = strdup(addr);
+    int port = 80;
+
+    char *colon = strrchr(host, ':');
+    if (colon) {
+        *colon = 0;
+        port = strtol(colon+1, NULL, 10);
+    }
+
     t_client->Dial(host, port, this);
+
+    free(host);
 }
 
 // TODO consider using some lib for params
