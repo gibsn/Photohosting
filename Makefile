@@ -14,6 +14,7 @@ STANDALONE_SRC_MODULES = \
 	cfg.cpp              \
 	common.cpp           \
 	exceptions.cpp       \
+	grants.cpp           \
 	http_request.cpp     \
 	http_response.cpp    \
 	http_server.cpp      \
