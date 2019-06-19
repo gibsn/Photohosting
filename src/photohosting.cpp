@@ -16,7 +16,7 @@
 #include "web_album_creator_helper.h"
 
 
-Photohosting::Photohosting(Config &cfg, AuthDriver *_auth)
+Photohosting::Photohosting(Config &cfg, AuthBridge *_auth)
     : auth(_auth)
 {
     path_to_store = strdup(cfg.path_to_store);

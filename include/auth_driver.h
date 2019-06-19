@@ -2,9 +2,9 @@
 #define AUTH_DRIVER_H_SENTRY
 
 
-class AuthDriver {
+class AuthBridge {
 public:
-    virtual ~AuthDriver() {};
+    virtual ~AuthBridge() {};
 
     // throws CheckEx in case of error
     virtual bool Check(const char *_login, const char *password) const = 0;

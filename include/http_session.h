@@ -1,7 +1,7 @@
 #ifndef HTTP_SESSION_H_SENTRY
 #define HTTP_SESSION_H_SENTRY
 
-#include "app_layer_driver.h"
+#include "application.h"
 #include "common.h"
 #include "http_request.h"
 #include "http_response.h"
@@ -10,10 +10,10 @@
 
 class Photohosting;
 class HttpServer;
-class TcpSession;
+class TransportSessionBridge;
 
 
-class HttpSession: public AppLayerDriver {
+class HttpSession: public ApplicationLevelBridge {
     enum {
         state_idle = 0,
         state_waiting_for_headers,
@@ -33,7 +33,7 @@ class HttpSession: public AppLayerDriver {
     ByteArray read_buf;
     uint32_t last_headers_len;
 
-    TcpSession *tcp_session;
+    TransportSessionBridge *t_session;
 
     HttpRequest request;
     HttpResponse response;
@@ -75,7 +75,11 @@ class HttpSession: public AppLayerDriver {
     void SetWantToClose() { keep_alive = false; }
 
 public:
-    HttpSession(TcpSession *, HttpServer *);
+    HttpSession(
+        TransportSessionBridge * _t_session,
+        HttpServer * _http_server
+    );
+
     ~HttpSession();
 
     virtual void OnRead();

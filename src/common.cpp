@@ -56,7 +56,6 @@ bool process_cmd_arguments(int argc, char **argv, Config &cfg)
     return true;
 }
 
-
 ByteArray::ByteArray(const char *_data, int _size)
     : data(NULL),
     size(_size),
@@ -66,6 +65,16 @@ ByteArray::ByteArray(const char *_data, int _size)
         data = (char *)malloc(_size);
         memcpy(data, _data, _size);
     }
+}
+
+ByteArray::ByteArray(const char *_data)
+    : data(NULL),
+    size(0),
+    cap(0)
+{
+    data = strdup(_data);
+    size = strlen(data);
+    cap = size;
 }
 
 ByteArray::~ByteArray()

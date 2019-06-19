@@ -92,7 +92,7 @@ public:
 };
 
 
-class Auth: public AuthDriver{
+class Auth: public AuthBridge{
     UsersList users_list;
 
     char *tokens_path;
