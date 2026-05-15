@@ -48,4 +48,5 @@ configured users file.
 User credentials are loaded from the configured users file. After a successful
 login, the service creates a file-backed session token and sends it to the
 client in the `sid` cookie. Uploaded albums are only available to authenticated
-users.
+users. There are no roles, grants, or ACLs: the service only checks whether the
+request has a valid authenticated session.
