@@ -42,3 +42,10 @@ Edit `photohosting.ini` if needed, then start the standalone server:
 By default, static files are served from `public_html`, uploaded albums are
 stored under the same directory, and authentication data is read from the
 configured users file.
+
+## Authentication
+
+User credentials are loaded from the configured users file. After a successful
+login, the service creates a file-backed session token and sends it to the
+client in the `sid` cookie. Uploaded albums are only available to authenticated
+users.
