@@ -5,12 +5,12 @@
 struct WebAlbumParams;
 struct Config;
 struct ByteArray;
-class AuthDriver;
+class AuthBridge;
 
 
 class Photohosting
 {
-    AuthDriver *auth;
+    AuthBridge *auth;
 
     char *path_to_store;
     char *path_to_users;
@@ -20,7 +20,7 @@ class Photohosting
     void _CreateAlbum(const WebAlbumParams &cfg);
 
 public:
-    Photohosting(Config &cfg, AuthDriver *auth);
+    Photohosting(Config &cfg, AuthBridge *auth);
     ~Photohosting();
 
     bool Init(const Config &cfg);

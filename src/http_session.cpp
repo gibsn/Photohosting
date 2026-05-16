@@ -21,16 +21,19 @@
 #include "photohosting.h"
 
 
-HttpSession::HttpSession(TcpSession *_tcp_session, HttpServer *_http_server)
-    : state(state_idle),
+HttpSession::HttpSession(
+    TransportSessionBridge *_t_session,
+    HttpServer *_http_server
+):
+    state(state_idle),
     should_wait_for_more_data(true),
     http_server(_http_server),
     photohosting(_http_server->GetPhotohosting()),
     last_headers_len(0),
-    tcp_session(_tcp_session),
+    t_session(_t_session),
     keep_alive(true)
 {
-    s_addr = strdup(tcp_session->GetSAddr());
+    s_addr = strdup(_t_session->GetAddr());
 }
 
 
@@ -78,7 +81,7 @@ fin:
 
 void HttpSession::OnRead()
 {
-    ByteArray *tcp_read_buf = tcp_session->GetReadBuf();
+    ByteArray *tcp_read_buf = t_session->Read();
     read_buf.Append(tcp_read_buf);
     delete tcp_read_buf;
 
@@ -282,6 +285,8 @@ void HttpSession::ProcessPostRequest()
         ProcessLogin();
     } else if (LOCATION_IS("/logout")) {
         ProcessLogout();
+    } else if (LOCATION_IS("/foreign/login")) {
+        // pass
     } else {
         InitHttpResponse(http_not_found);
     }
@@ -336,7 +341,7 @@ void HttpSession::Respond()
     }
 
     ByteArray *r = response.GetResponseByteArray();
-    tcp_session->Send(r);
+    t_session->Write(r);
 
     delete r;
 }

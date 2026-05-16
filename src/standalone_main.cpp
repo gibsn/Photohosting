@@ -4,10 +4,13 @@
 #include "auth.h"
 #include "cfg.h"
 #include "common.h"
+#include "exceptions.h"
 #include "http_server.h"
 #include "log.h"
 #include "photohosting.h"
+#include "tcp_server.h"
 
+#include "tcp_client.h"
 
 int main(int argc, char **argv)
 {
@@ -43,10 +46,17 @@ int main(int argc, char **argv)
     struct sue_event_selector selector;
     sue_event_selector_init(&selector);
 
-    HttpServer server(cfg, selector, &photohosting);
-    if (!server.Init()) {
+    TcpServer tcp_server(cfg, selector);
+    if (!tcp_server.Init()) {
         return EXIT_FAILURE;
     }
+
+    HttpServer http_server(cfg, selector, &photohosting);
+    if (!http_server.Init()) {
+        return EXIT_FAILURE;
+    }
+
+    tcp_server.SetApplicationLevelSessionManager(&http_server);
 
     LOG_I("main: initialised http");
 
@@ -54,7 +64,12 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    sue_event_selector_go(&selector);
+    try {
+        sue_event_selector_go(&selector);
+    } catch (const Exception &err) {
+        LOG_E("fatal: %s", err.GetErrMsg());
+        return EXIT_FAILURE;
+    }
 
     return 0;
 }

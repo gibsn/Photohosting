@@ -14,6 +14,7 @@ STANDALONE_SRC_MODULES = \
 	cfg.cpp              \
 	common.cpp           \
 	exceptions.cpp       \
+	http_client.cpp      \
 	http_request.cpp     \
 	http_response.cpp    \
 	http_server.cpp      \
@@ -25,6 +26,7 @@ STANDALONE_SRC_MODULES = \
 	photohosting.cpp     \
 	tcp_server.cpp       \
 	tcp_session.cpp      \
+	tcp_client.cpp       \
 	users_api.cpp        \
 	web_album_creator_helper.cpp
 

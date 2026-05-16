@@ -22,6 +22,7 @@
 #include "http_session.h"
 #include "log.h"
 #include "photohosting.h"
+#include "transport.h"
 #include "tcp_session.h"
 #include "web_album_creator_helper.h"
 
@@ -41,16 +42,16 @@ char *HttpServer::AddPathToStaticPrefix(const char *path) const
 }
 
 
-AppLayerDriver *HttpServer::CreateSession(TcpSession *tcp_session)
+ApplicationLevelBridge *HttpServer::Create(TransportSessionBridge *t_session)
 {
-    assert(tcp_session);
+    assert(t_session);
 
-    HttpSession *http_session = new HttpSession(tcp_session, this);
+    HttpSession *http_session = new HttpSession(t_session, this);
     return http_session;
 }
 
 
-void HttpServer::CloseSession(AppLayerDriver *session)
+void HttpServer::Close(ApplicationLevelBridge *session)
 {
     HttpSession *http_session = dynamic_cast<HttpSession *>(session);
     delete http_session;
@@ -93,16 +94,16 @@ int HttpServer::GetFileStat(const char *path, struct stat *_stat) const
 
 bool HttpServer::Init()
 {
-    if (!TcpServer::Init()) {
-        return false;
-    }
-
     return true;
 }
 
 
-HttpServer::HttpServer(const Config &cfg, sue_event_selector &selector, Photohosting *_photohosting)
-    : TcpServer(cfg, selector),
+HttpServer::HttpServer(
+    const Config &cfg,
+    sue_event_selector &_selector,
+    Photohosting *_photohosting
+):
+    selector(_selector),
     path_to_static_len(0),
     photohosting(_photohosting)
 {

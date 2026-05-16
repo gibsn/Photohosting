@@ -131,63 +131,41 @@ bool TcpServer::SpawnWorkers()
     return true;
 }
 
-void TcpServer::FdHandlerCb(sue_fd_handler *fd_h, int r, int w, int x)
+void TcpServer::OnRead(TcpSession *session)
 {
-    TcpSession *session = (TcpSession *)fd_h->userdata;
-    TcpServer *server = session->GetTcpServer();
-    server->FdHandler(session, r, w, x);
-}
-
-void TcpServer::FdHandler(TcpSession *session, int r, int w, int x)
-{
-    if (r) {
-        session->ResetIdleTout(&selector);
-        session->OnRead();
-    }
-
-    if (w) {
-        session->OnWrite();
-    }
-
-    if (x) {
-    }
+    session->OnRead();
 
     if (session->ShouldClose()) {
-        CloseSession(session->GetAppLayerSession());
+        application_level_session_manager->Close(session->GetApplicationLevelHandler());
         CloseTcpSession(session);
     }
 }
 
-void TcpServer::ToutHandlerCb(sue_timeout_handler *tout_h)
+void TcpServer::OnWrite(TcpSession *session)
 {
-    TcpSession *session = (TcpSession *)tout_h->userdata;
-    TcpServer *server = session->GetTcpServer();
-    server->ToutHandler(session);
+    session->OnWrite();
+
+    if (session->ShouldClose()) {
+        application_level_session_manager->Close(session->GetApplicationLevelHandler());
+        CloseTcpSession(session);
+    }
 }
 
-
-void TcpServer::ToutHandler(TcpSession *session)
+void TcpServer::OnX(TcpSession *session)
 {
-    LOG_I("tcp: closing idle connection from %s [fd=%d]",
-        session->GetSAddr(), session->GetFd());
+}
 
-    CloseSession(session->GetAppLayerSession());
+void TcpServer::OnTimeout(TcpSession *session)
+{
+    LOG_I("tcp: closing idle connection [addr=%s; fd=%d]", session->GetAddr(), session->GetFd());
+
+    application_level_session_manager->Close(session->GetApplicationLevelHandler());
     CloseTcpSession(session);
 }
-
-
-// TODO mb inherit app_layer_session from tcp_session?
-void TcpServer::CloseSession(AppLayerDriver *session)
-{
-}
-
 
 // TODO do i really need sessions here? if i do change to slist then
 void TcpServer::CloseTcpSession(TcpSession *session)
 {
-    sue_event_selector_remove_fd_handler(&selector, session->GetFdHandler());
-    sue_event_selector_remove_timeout_handler(&selector, session->GetToutHandler());
-
     int i = 0;
     while (sessions[i++]->GetFd() != session->GetFd());
 
@@ -226,8 +204,8 @@ void TcpServer::ListenFdHandlerCb(sue_fd_handler *fd_h, int r, int w, int x)
         return;
     }
 
-    AppLayerDriver *app_layer_session = server->CreateSession(tcp_session);
-    tcp_session->SetAppLayerSession(app_layer_session);
+    ApplicationLevelBridge *h = server->GetApplicationLevelSessionManager()->Create(tcp_session);
+    tcp_session->SetApplicationLevelHandler(h);
 }
 
 
@@ -259,20 +237,10 @@ TcpSession *TcpServer::CreateTcpSession()
         return NULL;
     }
 
-    TcpSession *new_session = new TcpSession(client_s_addr, this, fd, FdHandlerCb, ToutHandlerCb);
-    new_session->InitFdHandler(&selector);
-    new_session->InitIdleTout(&selector);
-
-    sessions[n_sessions] = new_session;
-    n_sessions++;
+    TcpSession *new_session = new TcpSession(client_s_addr, fd, this, selector);
+    sessions[n_sessions++] = new_session;
 
     return new_session;
-}
-
-
-AppLayerDriver *TcpServer::CreateSession(TcpSession *tcp_session)
-{
-    return NULL;
 }
 
 
@@ -289,4 +257,8 @@ void TcpServer::Wait()
             LOG_E("tcp: worker %d has exited with error", pid);
         }
     }
+
+    //TODO move forking to main
+    LOG_I("tcp: all workers have exited");
+    exit(EXIT_SUCCESS);
 }

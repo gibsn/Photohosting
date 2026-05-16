@@ -8,25 +8,42 @@ extern "C" {
 #include "sue_base.h"
 }
 
-#include "app_layer_driver.h"
+#include "application.h"
 #include "common.h"
-#include "select_loop_driver.h"
+#include "transport.h"
 
 typedef void (*sue_fd_handler_cb_t)(struct sue_fd_handler*, int, int, int);
 typedef void (*sue_tout_handler_cb_t)(struct sue_timeout_handler*);
 
 class TcpServer;
-class AppLayerDriver;
+class TcpSession;
 
-class TcpSession
+class TcpSessionManagerBridge {
+public:
+    virtual ~TcpSessionManagerBridge() {};
+
+    virtual void OnRead(TcpSession *session) = 0;
+    virtual void OnWrite(TcpSession *session) = 0;
+    virtual void OnX(TcpSession *session) = 0;
+    virtual void OnTimeout(TcpSession *session) = 0;
+};
+
+struct SueTcpSessionHandlerUserData {
+    TcpSession *session;
+    TcpSessionManagerBridge *session_manager;
+};
+
+
+class TcpSession: public TransportSessionBridge
 {
+    sue_event_selector &selector;
     sue_fd_handler fd_h;
     sue_timeout_handler tout_h;
+    SueTcpSessionHandlerUserData userdata;
+
+    ApplicationLevelBridge *application_level_handler;
 
     char *s_addr;
-
-    AppLayerDriver *app_layer_session;
-    TcpServer *tcp_server;
 
     char read_buf[READ_BUF_SIZE];
     int read_buf_len;
@@ -38,47 +55,48 @@ class TcpSession
 
     bool want_to_close;
 
+
+    static void FdHandlerCb(sue_fd_handler *fd_h, int r, int w, int x);
+    void FdHandler(int r, int w, int x);
+
+    static void TimeoutHandlerCb(sue_timeout_handler *tout_h);
+    void TimeoutHandler();
+
+    void ResetIdleTimeout();
+
+    bool ReadToBuf();
     void ResetReadBuf();
+    bool Flush();
     void ResetWriteBuf();
 
 public:
     TcpSession(
         char *_s_addr,
-        TcpServer *_tcp_server,
         int _fd,
-        sue_fd_handler_cb_t cb,
-        sue_tout_handler_cb_t tout_cb
+        TcpSessionManagerBridge *session_manager,
+        sue_event_selector &selector
     );
 
     ~TcpSession();
 
-    bool ReadToBuf();
-    bool Flush();
-    bool ShouldClose() const { return want_to_close && write_buf_len == 0; }
-
     void OnRead();
     void OnWrite();
 
-    void Shutdown();
+    void WantToClose() { want_to_close = true; }
+    bool IsActive() const { return !want_to_close; }
+    bool ShouldClose() const { return want_to_close; }
     void Close();
 
-    TcpServer *GetTcpServer() { return tcp_server; }
     int GetFd() const { return fd_h.fd; }
-    const char *GetSAddr() const { return s_addr; }
-    ByteArray *GetReadBuf();
-    AppLayerDriver *GetAppLayerSession() { return app_layer_session; }
+    const char *GetAddr() { return s_addr; }
 
-    sue_fd_handler *GetFdHandler() { return &fd_h; }
-    sue_timeout_handler *GetToutHandler() { return &tout_h; }
+    ApplicationLevelBridge *GetApplicationLevelHandler() { return application_level_handler; }
+    void SetApplicationLevelHandler(ApplicationLevelBridge *h) {
+        application_level_handler = h;
+    }
 
-    void SetAppLayerSession(AppLayerDriver *session) { app_layer_session = session; }
-
-    void InitFdHandler(sue_event_selector *selector);
-
-    void InitIdleTout(sue_event_selector *selector);
-    void ResetIdleTout(sue_event_selector *selector);
-
-    void Send(ByteArray *);
+    ByteArray *Read();
+    void Write(ByteArray *);
 };
 
 

@@ -8,7 +8,6 @@ extern "C" {
 #include "sue_base.h"
 }
 
-#include "select_loop_driver.h"
 #include "tcp_session.h"
 
 #define MAX_FD 1024
@@ -22,7 +21,8 @@ struct Worker {
 };
 
 
-class TcpServer {
+class TcpServer: public TcpSessionManagerBridge
+{
     char *addr;
     int port;
 
@@ -33,6 +33,8 @@ class TcpServer {
     struct sue_event_selector &selector;
     struct sue_fd_handler listen_fd_h;
 
+    ApplicationLevelSessionManagerBridge *application_level_session_manager;
+
     int n_sessions;
     TcpSession **sessions;
 
@@ -41,17 +43,8 @@ class TcpServer {
 
     static void ListenFdHandlerCb(sue_fd_handler *fd_h, int r, int w, int x);
 
-    static void FdHandlerCb(sue_fd_handler *fd_h, int r, int w, int x);
-    void FdHandler(TcpSession *session, int r, int w, int x);
-
-    static void ToutHandlerCb(sue_timeout_handler *tout_h);
-    void ToutHandler(TcpSession *session);
-
     TcpSession *CreateTcpSession();
-    virtual AppLayerDriver *CreateSession(TcpSession *tcp_session);
-
     void CloseTcpSession(TcpSession *tcp_session);
-    virtual void CloseSession(AppLayerDriver *session);
 
     void ProcessRead(TcpSession *session);
     void ProcessWrite(TcpSession *session);
@@ -62,11 +55,24 @@ public:
     virtual ~TcpServer();
 
     const char *GetAddr() const { return addr; }
-    int GetPort() const { return port; }
-
     void SetAddr(const char *a) { addr = strdup(a); }
+
+    int GetPort() const { return port; }
     void SetPort(int p) { port = p; }
+
     void SetWorkersCount(int n) { n_workers = n; }
+
+    ApplicationLevelSessionManagerBridge *GetApplicationLevelSessionManager() {
+        return application_level_session_manager;
+    }
+    void SetApplicationLevelSessionManager(ApplicationLevelSessionManagerBridge *m) {
+        application_level_session_manager = m;
+    }
+
+    void OnRead(TcpSession *session);
+    void OnWrite(TcpSession *session);
+    void OnX(TcpSession *session);
+    void OnTimeout(TcpSession *session);
 
     virtual bool Init();
 };

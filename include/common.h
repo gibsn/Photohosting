@@ -13,6 +13,7 @@ struct ByteArray
 
     ByteArray() : data(NULL), size(0), cap(0) {};
     ByteArray(int _cap): size(0), cap(_cap) { data = (char *)malloc(cap); }
+    ByteArray(const char *data);
     ByteArray(const char *data, int size);
     ~ByteArray();
 

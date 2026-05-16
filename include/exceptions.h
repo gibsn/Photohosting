@@ -46,6 +46,22 @@ public:
 class UnknownWriteError: public SystemEx {};
 class UnknownReadError: public SystemEx {};
 
+class ConnectionError: public SystemEx {
+
+public:
+    ConnectionError(const char *t): SystemEx(t) {}
+    //
+    // virtual const char *GetErrMsg() const {
+    //     const char *base_msg = SystemEx::GetErrMsg();
+    //     const char *error_type_msg = "connection error: ";
+    //     uint16_t concrete_msg_len = strlen(error_type_msg) + strlen(base_msg) + 1;
+    //     char *concrete_msg = (char *)malloc(sizeof(*concrete_msg)*concrete_msg_len);
+    //     concrete_msg[0] = 0;
+    //     strcat(concrete_msg, error_type_msg);
+    //     return strcat(concrete_msg, base_msg);
+    // }
+};
+
 
 class AuthEx: public Exception {
 

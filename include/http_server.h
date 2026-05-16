@@ -1,17 +1,23 @@
 #ifndef HTTP_SERVER_H_SENTRY
 #define HTTP_SERVER_H_SENTRY
 
-#include "tcp_server.h"
+#include "application.h"
+
+extern "C" {
+#include "sue_base.h"
+}
 
 
-struct stat;
-
+struct ByteArray;
 struct Config;
 class Photohosting;
-class TcpSession;
+struct stat;
+class TransportSessionBridge;
 
 
-class HttpServer: public TcpServer {
+class HttpServer: public ApplicationLevelSessionManagerBridge {
+    sue_event_selector &selector;
+
     char *path_to_static;
     int path_to_static_len; // not to use strlen every time
 
@@ -21,8 +27,8 @@ class HttpServer: public TcpServer {
 
     char *AddPathToStaticPrefix(const char *) const;
 
-    AppLayerDriver *CreateSession(TcpSession *tcp_session);
-    void CloseSession(AppLayerDriver *session);
+    ApplicationLevelBridge *Create(TransportSessionBridge *t_session);
+    void Close(ApplicationLevelBridge *session);
 
 public:
     HttpServer(const Config &cfg, sue_event_selector &selector, Photohosting *photohosting);

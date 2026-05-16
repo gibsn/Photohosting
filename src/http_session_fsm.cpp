@@ -195,7 +195,7 @@ void HttpSession::ProcessStateResponding()
 
 void HttpSession::ProcessStateShuttingDown()
 {
-    tcp_session->Shutdown();
+    t_session->WantToClose();
     should_wait_for_more_data = true;
 }
 
