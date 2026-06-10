@@ -16,6 +16,56 @@
 #include "web_album_creator_helper.h"
 
 
+PhotohostingGrants::PhotohostingGrants(const char *_path_to_grants)
+    : Grants(_path_to_grants)
+{
+}
+
+PhotohostingGrants::~PhotohostingGrants()
+{
+}
+
+void PhotohostingGrants::Init() const
+{
+    Grants::Init();
+}
+
+PhotohostingGrantsBuilder *PhotohostingGrants::Builder()
+{
+    return new PhotohostingGrantsBuilder(GetPathToGrants());
+}
+
+PhotohostingGrantsBuilder::PhotohostingGrantsBuilder(const char *path_to_grants)
+    : GrantsBuilder(path_to_grants),
+    album(NULL),
+    photo(NULL)
+{
+}
+
+PhotohostingGrantsBuilder::~PhotohostingGrantsBuilder()
+{
+    free(album);
+    free(photo);
+}
+
+char *PhotohostingGrantsBuilder::GrantParamsToPath() const
+{
+    ByteArray buf;
+    buf.Append("photohosting");
+
+    if (album) {
+        buf.Append("/album/");
+        buf.Append(album);
+    }
+
+    if (photo) {
+        buf.Append("/photo/");
+        buf.Append(photo);
+    }
+
+    return buf.GetString();
+}
+
 Photohosting::Photohosting(Config &cfg, AuthDriver *_auth)
     : auth(_auth)
 {
@@ -27,6 +77,8 @@ Photohosting::Photohosting(Config &cfg, AuthDriver *_auth)
 
     path_to_tmp_files = strdup(cfg.path_to_tmp_files);
     relative_path_to_css = strdup(cfg.path_to_css);
+
+    grants = new PhotohostingGrants(cfg.path_to_grants);
 }
 
 
@@ -36,6 +88,8 @@ Photohosting::~Photohosting()
     free(path_to_users);
     free(path_to_tmp_files);
     free(relative_path_to_css);
+
+    delete grants;
 }
 
 bool Photohosting::Init(const Config &cfg)
@@ -58,6 +112,8 @@ bool Photohosting::Init(const Config &cfg)
             return false;
         }
     }
+
+    grants->Init();
 
     return true;
 }

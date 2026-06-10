@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 
 struct ByteArray
@@ -11,14 +12,25 @@ struct ByteArray
     int size;
     int cap;
 
+private:
+    bool ShouldRealloc(int needed_size) const;
+    void Realloc(int new_size);
+
+public:
     ByteArray() : data(NULL), size(0), cap(0) {};
+    ByteArray(const char *s);
+    ByteArray(const char *s, int size);
     ByteArray(int _cap): size(0), cap(_cap) { data = (char *)malloc(cap); }
-    ByteArray(const char *data, int size);
     ~ByteArray();
 
     void Append(const ByteArray *other);
+    void Append(const char *s);
+    void Append(const char *s, int size);
+
     void Truncate(uint32_t n);
     void Reset();
+
+    char *GetString() const { return strndup(data, size); }
 };
 
 
@@ -31,7 +43,7 @@ bool file_exists(const char *);
 
 char *_gen_random_string(int length);
 
-int mkdir_p(const char *, mode_t);
+int mkdir_p(const char *path, mode_t mode);
 int rm_rf(const char *path);
 bool change_user(const char *runas);
 

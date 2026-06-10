@@ -8,7 +8,6 @@
 #include <grp.h>
 #include <pwd.h>
 #include <stdio.h>
-#include <string.h>
 
 #ifdef __linux__
 #include <sys/prctl.h>
@@ -56,6 +55,18 @@ bool process_cmd_arguments(int argc, char **argv, Config &cfg)
     return true;
 }
 
+ByteArray::ByteArray(const char *_data)
+    : data(NULL),
+    size(0),
+    cap(0)
+{
+    if (_data) {
+        data = (char *)malloc(strlen(_data));
+        memcpy(data, _data, strlen(_data));
+        size = strlen(_data);
+        cap = strlen(_data);
+    }
+}
 
 ByteArray::ByteArray(const char *_data, int _size)
     : data(NULL),
@@ -73,20 +84,40 @@ ByteArray::~ByteArray()
     free(data);
 }
 
+bool ByteArray::ShouldRealloc(int needed_size) const
+{
+    return cap < needed_size;
+}
+
+void ByteArray::Realloc(int new_size)
+{
+    data = (char *)realloc(data, new_size);
+    cap = new_size;
+}
 
 void ByteArray::Append(const ByteArray *arr)
 {
-    if (arr && arr->data) {
-        if (cap < size + arr->size) {
-            data = (char *)realloc(data, size + arr->size);
-            cap = size + arr->size;
-        }
-
-        memcpy(data + size, arr->data, arr->size);
-        size += arr->size;
+    if (arr) {
+        Append(arr->data, arr->size);
     }
 }
 
+void ByteArray::Append(const char *str)
+{
+    Append(str, strlen(str));
+}
+
+void ByteArray::Append(const char *str, int _size)
+{
+    if (str) {
+        if (ShouldRealloc(_size + size)) {
+            Realloc(_size + size);
+        }
+
+        memcpy(data + size, str, _size);
+        size += _size;
+    }
+}
 
 // Truncate discards all but the first n unread bytes from the buffer but
 // continues to use the same allocated storage.
@@ -201,7 +232,14 @@ int mkdir_p(const char *path, mode_t mode)
     }
 
     int ret = 0;
-    char *_path = strdup(path);
+
+    char *_path = (char *)malloc(strlen(path)+2);
+    memcpy(_path, path, strlen(path));
+    if (_path[strlen(path)-1] != '/') {
+        _path[strlen(path)] = '/';
+        _path[strlen(path)+1] = 0;
+    }
+
     char *curr_dir = strchr(_path + 1, '/');
 
     while(curr_dir) {
